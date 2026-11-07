@@ -62,7 +62,7 @@ export function buildBody(look) {
   const topC = LOOK.clothColors[L.topColor] ?? 0x222222, pantsC = LOOK.clothColors[L.pantsColor] ?? 0x222222, vestC = LOOK.clothColors[L.vestColor] ?? 0x1c1c1c;
   const female = L.sex === 'f', heavy = L.build === 'heavy' ? 1.18 : L.build === 'slim' ? 0.9 : 1;
   const sh = (female ? 0.86 : 1) * heavy;            // shoulder width factor
-  const sleeves = { tank: 0, tee: 1, longsleeve: 2, hoodie: 2, jacket: 2, fur: 2, suit: 2 }[L.top] ?? 1;
+  const sleeves = { tank: 0, tee: 1, longsleeve: 2, hoodie: 2, jacket: 2, fur: 2, suit: 2, thobe: 2, armor: 2 }[L.top] ?? 1;
   const topPat = pat(L.topPattern, topC), pantsPat = pat(L.pantsPattern, pantsC);
   const gloveC = L.gloves ? 0x1a1a1a : skin;
   const T = [];
@@ -84,6 +84,32 @@ export function buildBody(look) {
   if (L.top === 'hoodie') T.push(prep(new THREE.TorusGeometry(0.13, 0.05, 6, 12, Math.PI * 1.2), topC, topPat, M4(0, 1.5, 0.06, Math.PI / 2 - 0.3, 0, Math.PI * 0.4)));
   if (L.top === 'fur') T.push(prep(new THREE.TorusGeometry(0.13, 0.055, 6, 14), 0xc8b08a, (c, x, y, z) => c.multiplyScalar(0.85 + 0.3 * hash(x * 9, y * 9, z * 9)), M4(0, 1.5, 0, Math.PI / 2)));
   if (L.top === 'jacket') T.push(prep(new THREE.BoxGeometry(0.3 * sh, 0.06, 0.22), topC, topPat, M4(0, 1.5, 0)));
+  if (L.top === 'thobe') { // long robe down to the shins, with a placket and pocket
+    T.push(prep(new THREE.CylinderGeometry(0.2 * sh, 0.27, 0.62, 12, 1, true), topC, topPat, M4(0, 0.66, 0)));
+    T.push(prep(new THREE.BoxGeometry(0.03, 0.22, 0.01), new THREE.Color(topC).multiplyScalar(0.8).getHex(), null, M4(0, 1.42, -0.136)));
+    T.push(prep(new THREE.BoxGeometry(0.07, 0.05, 0.01), new THREE.Color(topC).multiplyScalar(0.85).getHex(), null, M4(-0.1, 1.33, -0.137)));
+  }
+  if (L.top === 'armor') { // bulky plates, collar and belly guard
+    T.push(prep(new THREE.BoxGeometry(0.46 * sh, 0.42, 0.34), topC, (c, x, y, z) => c.multiplyScalar(0.85 + 0.25 * hash(Math.floor(x * 8), Math.floor(y * 8), Math.floor(z * 8))), M4(0, 1.27, 0)));
+    T.push(prep(new THREE.TorusGeometry(0.15, 0.05, 6, 14), topC, null, M4(0, 1.52, 0, Math.PI / 2)));
+    T.push(prep(new THREE.BoxGeometry(0.3 * sh, 0.14, 0.26), topC, c => c.multiplyScalar(0.8), M4(0, 1.0, 0)));
+  }
+  if (L.gear === 'medic') {
+    T.push(prep(new THREE.BoxGeometry(0.16, 0.14, 0.1), 0xf0ece4, null, M4(0.24 * sh, 1.02, 0.02)));
+    T.push(prep(new THREE.BoxGeometry(0.06, 0.02, 0.012), 0xc0262d, null, M4(0.24 * sh, 1.03, -0.035)));
+    T.push(prep(new THREE.BoxGeometry(0.02, 0.06, 0.012), 0xc0262d, null, M4(0.24 * sh, 1.03, -0.035)));
+    T.push(prep(new THREE.BoxGeometry(0.03, 0.5, 0.02), 0x5a4a32, null, M4(0.02, 1.3, -0.15, 0, 0, -0.75)));            // strap
+  } else if (L.gear === 'drone') {
+    T.push(prep(new THREE.BoxGeometry(0.3, 0.36, 0.16), 0x3a3f34, null, M4(0, 1.3, 0.2)));
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+      T.push(prep(new THREE.BoxGeometry(0.2, 0.015, 0.02), 0x222222, null, M4(sx * 0.12, 1.5 + sy * 0.02, 0.24, 0, 0, sx * sy * 0.6)));
+      T.push(prep(new THREE.CylinderGeometry(0.07, 0.07, 0.01, 12), 0x555555, null, M4(sx * 0.21, 1.53 + sy * 0.06, 0.24)));
+    }
+    T.push(prep(new THREE.BoxGeometry(0.12, 0.05, 0.1), 0x2a2a2a, null, M4(0, 1.52, 0.24)));
+  } else if (L.gear === 'radio') {
+    T.push(prep(new THREE.BoxGeometry(0.26, 0.32, 0.14), 0x3a3f34, null, M4(0, 1.28, 0.2)));
+    T.push(prep(new THREE.CylinderGeometry(0.006, 0.006, 0.5, 4), 0x111111, null, M4(0.1, 1.68, 0.22, 0, 0, -0.08)));
+  }
 
   // vest / harness
   if (L.vest === 'plate') {
@@ -107,6 +133,12 @@ export function buildBody(look) {
       T.push(prep(new THREE.SphereGeometry(0.006, 4, 3), 0xffffff, null, M4(px - 0.01, py, -0.04)));
     } else if (L.patch === 'crown') T.push(prep(new THREE.BoxGeometry(0.012, 0.07, 0.08), 0x2a2a2a, (c, x, y) => c.setHex(y > py + 0.005 ? 0xd9a520 : 0x2a2a2a), M4(px, py, 0)));
     else if (L.patch === 'olive') T.push(prep(new THREE.CircleGeometry(0.04, 10), 0x5a7a3a, null, M4(px - 0.006, py, 0, 0, -Math.PI / 2)));
+    else if (L.patch === 'medic') { T.push(prep(new THREE.BoxGeometry(0.012, 0.07, 0.07), 0xf2f2f2, null, M4(px, py, 0))); T.push(prep(new THREE.TorusGeometry(0.022, 0.007, 4, 10, Math.PI * 1.4), 0xc0262d, null, M4(px - 0.008, py, 0, 0, -Math.PI / 2, 0.8))); }
+  }
+  if (L.patchBoth && L.patch !== 'none') { // mirror the shoulder patch on the right arm
+    const n = T.length, px = 0.235 * sh;
+    if (L.patch === 'jo') { T.push(prep(new THREE.BoxGeometry(0.012, 0.024, 0.11), 0x111111, null, M4(px, 1.424, 0))); T.push(prep(new THREE.BoxGeometry(0.012, 0.024, 0.11), 0xffffff, null, M4(px, 1.4, 0))); T.push(prep(new THREE.BoxGeometry(0.012, 0.024, 0.11), 0x0a7a3a, null, M4(px, 1.376, 0))); }
+    else T.push(prep(new THREE.BoxGeometry(0.012, 0.07, 0.08), L.patch === 'crown' ? 0xd9a520 : L.patch === 'medic' ? 0xf2f2f2 : 0x5a7a3a, null, M4(px, 1.4, 0)));
   }
 
   // head
@@ -154,7 +186,7 @@ export function buildBody(look) {
     H.push(prep(new THREE.ConeGeometry(0.17, 0.2, 10, 1, true), hc, null, M4(0, 1.36, -0.08, 0.1, 0, Math.PI)));   // front fold
   } else {
     const st = L.hair;
-    if (st === 'curly') {
+    if (st === 'curly' && !['cap', 'cap_nvg', 'heavy_helmet', 'ghutra'].includes(L.headwear)) {
       for (let i = 0; i < 46; i++) {
         const a = hash(i, 1, 7) * Math.PI * 2, el = 0.15 + hash(i, 3, 1) * 1.15;
         if (Math.sin(a) < -0.55 && el > 0.95) continue; // keep the forehead clear
@@ -163,24 +195,60 @@ export function buildBody(look) {
         if (y < 1.74 && z < 0) continue;
         H.push(prep(new THREE.IcosahedronGeometry(0.05 + hash(i, 9, 2) * 0.02, 0), hairC, c => c.multiplyScalar(0.85 + 0.3 * hash(i, 2, 2)), M4(x, y, z)));
       }
-    } else if (st !== 'bald') {
+    } else if (st !== 'bald' && !['cap', 'cap_nvg', 'heavy_helmet', 'ghutra'].includes(L.headwear)) {
       const cap = st === 'buzz' ? 0.204 : 0.214;
       H.push(prep(new THREE.SphereGeometry(cap, 14, 8, 0, Math.PI * 2, 0, Math.PI * (st === 'buzz' ? 0.42 : 0.5)), hairC, null, M4(0, 1.75, 0.015, -0.25, 0, 0, hw, hh, 1)));
       if (st === 'long') H.push(prep(new THREE.BoxGeometry(0.34, 0.36, 0.1), hairC, null, M4(0, 1.6, 0.13)));
+      if (st === 'ponytail') { H.push(prep(new THREE.SphereGeometry(0.05, 8, 6), hairC, null, M4(0, 1.8, 0.2))); H.push(prep(new THREE.CapsuleGeometry(0.045, 0.22, 3, 8), hairC, null, M4(0, 1.62, 0.25, 0.35))); }
       if (st === 'bun') H.push(prep(new THREE.SphereGeometry(0.075, 8, 6), hairC, null, M4(0, 1.86, 0.16)));
       if (st === 'short') H.push(prep(new THREE.BoxGeometry(0.3, 0.06, 0.08), hairC, null, M4(0, 1.88, -0.12, 0.3)));
     }
+  }
+  if (!L.hijab && L.hair === 'ponytail' && ['cap', 'cap_nvg', 'heavy_helmet'].includes(L.headwear)) H.push(prep(new THREE.CapsuleGeometry(0.045, 0.22, 3, 8), hairC, null, M4(0, 1.6, 0.26, 0.35)));
+  // headwear
+  const hw2 = L.hijab && L.headwear !== 'headset' ? 'none' : L.headwear;
+  if (hw2 === 'cap' || hw2 === 'cap_nvg') {
+    const capC = L.headwear === 'cap_nvg' ? topC : (LOOK.clothColors[L.vestColor] ?? 0x2a2d30);
+    H.push(prep(new THREE.SphereGeometry(0.218, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), capC, topPat, M4(0, 1.77, 0.01, -0.12, 0, 0, hw, 0.85, 1.02)));
+    H.push(prep(new THREE.BoxGeometry(0.24, 0.015, 0.13), capC, null, M4(0, 1.83, -0.24, -0.1)));
+    if (hw2 === 'cap_nvg') {
+      H.push(prep(new THREE.BoxGeometry(0.06, 0.05, 0.06), 0x1a1a1a, null, M4(0, 1.9, -0.2)));
+      for (const s of [-1, 1]) H.push(prep(new THREE.CylinderGeometry(0.024, 0.028, 0.1, 10), 0x111111, null, M4(s * 0.04, 1.9, -0.27, Math.PI / 2)));
+      H.push(prep(new THREE.BoxGeometry(0.17, 0.03, 0.02), 0x222222, null, M4(0, 1.88, 0.2)));
+    }
+  }
+  if (hw2 === 'headset' || hw2 === 'cap_nvg') {
+    H.push(prep(new THREE.TorusGeometry(0.222, 0.014, 4, 20, Math.PI), 0x1c1c1c, null, M4(0, 1.75, 0.02)));
+    for (const s of [-1, 1]) H.push(prep(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 12), 0x2a2a2a, null, M4(s * 0.215 * hw, 1.73, 0.01, 0, 0, Math.PI / 2)));
+    H.push(prep(new THREE.BoxGeometry(0.01, 0.01, 0.14), 0x1c1c1c, null, M4(-0.2 * hw, 1.68, -0.1, 0.4)));            // mic boom
+  }
+  if (hw2 === 'ghutra') { // checked head-cloth with a black agal
+    const gc = checker(0xb3202a, 0xf2f2f2);
+    H.push(prep(withoutFront(new THREE.SphereGeometry(0.232, 16, 12), (x, y, z) => z < -0.12 && y > -0.13 && y < 0.11 && Math.abs(x) < 0.15), 0xf2f2f2, gc, M4(0, 1.75, 0.01, 0, 0, 0, hw, hh * 1.03, 1.02)));
+    H.push(prep(new THREE.BoxGeometry(0.34, 0.3, 0.05), 0xf2f2f2, gc, M4(0, 1.56, 0.19, -0.2)));
+    for (const s of [-1, 1]) H.push(prep(new THREE.BoxGeometry(0.05, 0.28, 0.1), 0xf2f2f2, gc, M4(s * 0.2, 1.5, -0.05, 0, 0, s * 0.15)));
+    for (const dy of [0, 0.03]) H.push(prep(new THREE.TorusGeometry(0.19, 0.016, 6, 22), 0x111111, null, M4(0, 1.86 + dy, 0.02, Math.PI / 2 - 0.2)));
+  }
+  if (hw2 === 'heavy_helmet') {
+    const hc = new THREE.Color(topC).multiplyScalar(0.9).getHex();
+    H.push(prep(new THREE.SphereGeometry(0.25, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), hc, null, M4(0, 1.75, 0.01, -0.1, 0, 0, hw, 1, 1.04)));
+    H.push(prep(new THREE.BoxGeometry(0.32, 0.09, 0.03), 0x1b2b38, null, M4(0, 1.79, -0.235, 0.2)));                // visor
+    for (const s of [-1, 1]) H.push(prep(new THREE.BoxGeometry(0.05, 0.12, 0.12), hc, null, M4(s * 0.23 * hw, 1.7, 0)));
+    H.push(prep(new THREE.BoxGeometry(0.06, 0.05, 0.05), 0x222222, null, M4(0.18, 1.86, 0.08)));                      // light
   }
   const hair = H.length ? mesh(merged(H)) : new THREE.Group();
 
   // arms (pivot at the shoulder, hanging down)
   const arm = side => {
+    void side;
     const A = [], up = sleeves >= 1 ? topC : skin, low = sleeves >= 2 ? topC : skin, uPat = sleeves >= 1 ? topPat : null, lPat = sleeves >= 2 ? topPat : null, k = heavy * (female ? 0.9 : 1);
     A.push(prep(new THREE.CapsuleGeometry(0.065 * k, 0.2, 3, 8), up, uPat, M4(0, -0.14, 0)));
     if (sleeves === 1) A.push(prep(new THREE.CapsuleGeometry(0.06 * k, 0.12, 3, 8), skin, null, M4(0, -0.2, 0)));
     A.push(prep(new THREE.CapsuleGeometry(0.055 * k, 0.2, 3, 8), low, lPat, M4(0, -0.4, 0)));
     if (L.top === 'suit' || L.top === 'jacket') A.push(prep(new THREE.CylinderGeometry(0.062 * k, 0.062 * k, 0.04, 8), L.top === 'suit' ? 0xf2f2ee : topC, null, M4(0, -0.5, 0)));
     A.push(prep(new THREE.BoxGeometry(0.08, 0.1, 0.06), gloveC, null, M4(0, -0.58, 0)));
+    if (L.top === 'armor') A.push(prep(new THREE.SphereGeometry(0.1 * k, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), topC, null, M4(0, -0.02, 0, 0, 0, 0, 1.15, 0.9, 1.1)));
+    if (L.watch && side < 0) { A.push(prep(new THREE.CylinderGeometry(0.06 * k, 0.06 * k, 0.04, 10), 0x1a1a1a, null, M4(0, -0.5, 0))); A.push(prep(new THREE.BoxGeometry(0.045, 0.045, 0.02), 0x2a2a2a, null, M4(0, -0.5, -0.06 * k))); }
     const g = new THREE.Group(); g.add(mesh(merged(A))); g.position.set(side * 0.27 * sh, 1.47, 0);
     return g;
   };
@@ -197,15 +265,44 @@ export function buildBody(look) {
   return { torso, hair, armL: arm(-1), armR: arm(1), legL: leg(-1), legR: leg(1) };
 }
 
-// weapon model: greys in vertex colours, tinted by the skin colour on its own material
-export function buildGun() {
-  const P = [];
-  P.push(prep(new THREE.BoxGeometry(0.07, 0.11, 0.42), 0xbbbbbb, null, M4(0, 0, -0.18)));
-  P.push(prep(new THREE.CylinderGeometry(0.018, 0.018, 0.36, 8), 0x777777, null, M4(0, 0.02, -0.56, Math.PI / 2)));
-  P.push(prep(new THREE.BoxGeometry(0.055, 0.15, 0.07), 0x999999, null, M4(0, -0.11, -0.2, 0.2)));
-  P.push(prep(new THREE.BoxGeometry(0.05, 0.1, 0.05), 0x999999, null, M4(0, -0.08, -0.02, -0.3)));
-  P.push(prep(new THREE.BoxGeometry(0.06, 0.09, 0.22), 0xaaaaaa, null, M4(0, -0.01, 0.13)));
-  P.push(prep(new THREE.BoxGeometry(0.03, 0.03, 0.2), 0x666666, null, M4(0, 0.075, -0.22)));
-  const g = mergeGeometries(P, false);
-  return g;
+// weapon models per class: greys/wood in vertex colours, tinted by the weapon skin on the material
+const WOOD = 0x9a6a40;
+export function buildGun(cls = 'AR') {
+  const P = [], b = (w, h, d, c, x, y, z, rx = 0) => P.push(prep(new THREE.BoxGeometry(w, h, d), c, null, M4(x, y, z, rx)));
+  const cyl = (r, l, c, x, y, z) => P.push(prep(new THREE.CylinderGeometry(r, r, l, 8), c, null, M4(x, y, z, Math.PI / 2)));
+  const scope = (r, l, y = 0.085, z = -0.2) => { cyl(r, l, 0x333333, 0, y, z); cyl(r * 1.3, 0.04, 0x444444, 0, y, z - l / 2); cyl(r * 1.2, 0.04, 0x444444, 0, y, z + l / 2); b(0.02, 0.04, 0.03, 0x555555, 0, y - r - 0.01, z); };
+  switch (cls) {
+    case 'SMG':
+      b(0.065, 0.1, 0.32, 0xbbbbbb, 0, 0, -0.12); cyl(0.016, 0.14, 0x777777, 0, 0.015, -0.34);
+      b(0.04, 0.17, 0.04, 0x8a8a8a, 0, -0.12, -0.12); b(0.045, 0.1, 0.045, 0x999999, 0, -0.08, 0.0, -0.3);
+      b(0.02, 0.02, 0.22, 0x666666, 0, 0.01, 0.13); b(0.02, 0.07, 0.02, 0x666666, 0, -0.02, 0.24);
+      b(0.025, 0.035, 0.08, 0x333333, 0, 0.07, -0.1); break;
+    case 'DMR':
+      b(0.07, 0.11, 0.5, 0xbbbbbb, 0, 0, -0.2); cyl(0.02, 0.42, 0x6a6a6a, 0, 0.02, -0.66);
+      b(0.055, 0.11, 0.07, 0x999999, 0, -0.1, -0.2); b(0.05, 0.1, 0.05, 0x999999, 0, -0.08, 0, -0.3);
+      b(0.06, 0.1, 0.26, 0xaaaaaa, 0, -0.01, 0.17); scope(0.025, 0.24); break;
+    case 'SNIPER':
+      b(0.07, 0.1, 0.48, WOOD, 0, -0.01, -0.12); cyl(0.017, 0.62, 0x5a5a5a, 0, 0.02, -0.66);
+      b(0.06, 0.12, 0.3, WOOD, 0, -0.03, 0.22); b(0.05, 0.08, 0.05, 0x8a8a8a, 0, -0.08, -0.05);
+      b(0.025, 0.02, 0.05, 0x888888, 0.05, 0.03, 0.04); scope(0.032, 0.34, 0.1, -0.15);
+      for (const s2 of [-1, 1]) P.push(prep(new THREE.BoxGeometry(0.012, 0.2, 0.012), 0x333333, null, M4(s2 * 0.03, -0.1, -0.55, 0, 0, s2 * 0.3))); break;
+    case 'SG':
+      for (const s2 of [-1, 1]) cyl(0.022, 0.6, 0x6a6a6a, s2 * 0.022, 0.02, -0.38);
+      b(0.08, 0.1, 0.22, 0x888888, 0, 0, -0.02); b(0.07, 0.07, 0.24, WOOD, 0, -0.03, -0.22);
+      b(0.06, 0.12, 0.3, WOOD, 0, -0.04, 0.2, 0.15); break;
+    case 'LMG':
+      b(0.09, 0.13, 0.5, 0xaaaaaa, 0, 0, -0.18); cyl(0.024, 0.48, 0x5a5a5a, 0, 0.02, -0.64);
+      b(0.13, 0.15, 0.13, 0x6a6a5a, -0.02, -0.13, -0.2); b(0.06, 0.1, 0.05, 0x999999, 0, -0.09, 0, -0.3);
+      b(0.06, 0.12, 0.26, 0x999999, 0, -0.01, 0.17); b(0.05, 0.03, 0.1, 0x777777, 0, 0.09, -0.4);
+      for (const s2 of [-1, 1]) P.push(prep(new THREE.BoxGeometry(0.014, 0.22, 0.014), 0x333333, null, M4(s2 * 0.035, -0.11, -0.72, 0, 0, s2 * 0.3))); break;
+    case 'PISTOL':
+      b(0.04, 0.06, 0.2, 0xbbbbbb, 0, 0.02, -0.12); b(0.035, 0.12, 0.05, 0x888888, 0, -0.06, -0.04, -0.2); break;
+    default: // assault rifle
+      b(0.07, 0.11, 0.42, 0xbbbbbb, 0, 0, -0.18); cyl(0.018, 0.36, 0x777777, 0, 0.02, -0.56);
+      b(0.08, 0.09, 0.2, 0x9a9a9a, 0, 0.0, -0.42);                                    // handguard
+      P.push(prep(new THREE.BoxGeometry(0.055, 0.17, 0.07), 0x999999, null, M4(0, -0.12, -0.2, 0.25)));   // curved mag
+      b(0.05, 0.1, 0.05, 0x999999, 0, -0.08, -0.02, -0.3); b(0.06, 0.09, 0.22, 0xaaaaaa, 0, -0.01, 0.13);
+      b(0.03, 0.02, 0.32, 0x555555, 0, 0.065, -0.24); b(0.03, 0.045, 0.06, 0x333333, 0, 0.09, -0.16);   // rail + optic
+  }
+  return mergeGeometries(P, false);
 }

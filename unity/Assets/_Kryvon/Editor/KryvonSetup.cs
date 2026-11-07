@@ -21,6 +21,7 @@ namespace Kryvon.EditorTools
             {
                 if (EditorApplication.isPlayingOrWillChangePlaymode) return;
                 if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) == null) Build();
+                else if (string.IsNullOrEmpty(EditorSceneManager.GetActiveScene().path)) EditorSceneManager.OpenScene(ScenePath);
             };
         }
 

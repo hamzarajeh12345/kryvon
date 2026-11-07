@@ -19,7 +19,8 @@ const GEO = {
 const SKIN = [0xe0b48f, 0xc99a74, 0xa9775a, 0x8a5c42, 0xf0c9a8];
 const CLOTH = [0x6b6f4a, 0x8a7a5a, 0x4f5b66, 0x7a4a3a, 0x3f4a3a, 0x9a8f7a, 0x5a4a6a, 0x2f3f5a, 0x7a6a40, 0x4a4a4a];
 const HELMET_COL = [0, 0xe8c020, 0x30343a, 0x44513a];
-const GUN_GEO = buildGun();
+const GUN_GEOS = {};
+const gunGeo = cls => GUN_GEOS[cls] ||= buildGun(cls);
 
 export function itemName(it) {
   switch (it.kind) {
@@ -79,7 +80,7 @@ export class Actor {
     this.mesh = g;
     this.packMesh = new THREE.Mesh(GEO.pack, new THREE.MeshLambertMaterial({ color: 0x5a4a32 })); this.packMesh.position.set(0, 1.25, 0.26); this.packMesh.visible = false; g.add(this.packMesh);
     this.helmetMesh = new THREE.Mesh(GEO.helmet, new THREE.MeshLambertMaterial({ color: 0x333333 })); this.helmetMesh.position.y = 1.79; this.helmetMesh.scale.setScalar(1.06); this.helmetMesh.visible = false; g.add(this.helmetMesh);
-    this.gunMesh = new THREE.Mesh(GUN_GEO, new THREE.MeshLambertMaterial({ color: 0x404244, vertexColors: true })); this.gunMesh.position.set(0.2, 1.36, -0.32); this.gunMesh.visible = false; g.add(this.gunMesh);
+    this.gunMesh = new THREE.Mesh(gunGeo('AR'), new THREE.MeshLambertMaterial({ color: 0x404244, vertexColors: true })); this.gunMesh.position.set(0.2, 1.36, -0.32); this.gunMesh.visible = false; g.add(this.gunMesh);
     this.chute = new THREE.Mesh(GEO.chute, new THREE.MeshLambertMaterial({ color: this.isPlayer ? 0xc0262d : 0xd8d0b8, side: THREE.DoubleSide })); this.chute.position.y = 6; this.chute.visible = false; g.add(this.chute);
     this.chuteStripe = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.18, 6, 24), new THREE.MeshLambertMaterial({ color: 0xf0e6d2 })); this.chuteStripe.rotation.x = Math.PI / 2; this.chuteStripe.position.y = 1.35; this.chute.add(this.chuteStripe);
     this.gunColor = 0x404244;
@@ -125,7 +126,7 @@ export class Actor {
     this.packMesh.visible = this.pack > 0;
     this.packMesh.scale.setScalar(0.8 + this.pack * 0.15);
     this.gunMesh.visible = !!this.weapon;
-    if (this.weapon) this.gunMesh.scale.z = this.weapon.def.cls === 'PISTOL' ? 0.45 : this.weapon.def.cls === 'SNIPER' ? 1.35 : this.weapon.def.cls === 'LMG' ? 1.2 : 1;
+    if (this.weapon) this.gunMesh.geometry = gunGeo(this.weapon.def.cls);
     this.gunMesh.material.color.setHex(this.weapon && this.weapon.def.exclusive ? 0xd9a520 : this.gunColor === 0x202224 ? 0x404244 : this.gunColor);
   }
 

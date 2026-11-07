@@ -51,7 +51,7 @@ namespace Kryvon
 
         void Start()
         {
-            foreach (var h in FindObjectsByType<Health>(FindObjectsSortMode.None)) Register(h);
+            foreach (var h in FindObjectsByType<Health>()) Register(h);
             if (autoStart) SetPhase(MatchPhase.Island);
         }
 

@@ -124,7 +124,7 @@ namespace Kryvon
             tickTimer -= Time.deltaTime;
             if (tickTimer > 0f) return;
             tickTimer = damageTickSeconds;
-            var players = MatchManager.Instance != null ? MatchManager.Instance.AllPlayers : (System.Collections.Generic.IReadOnlyList<Health>)FindObjectsByType<Health>(FindObjectsSortMode.None);
+            var players = MatchManager.Instance != null ? MatchManager.Instance.AllPlayers : (System.Collections.Generic.IReadOnlyList<Health>)FindObjectsByType<Health>();
             float dmg = CurrentDamagePerSecond * damageTickSeconds;
             foreach (var h in players)
                 if (h != null && h.IsAlive && !IsInside(h.transform.position))

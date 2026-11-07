@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4eff84dc5cd8134a98f49421ab18cfe, type: 3}
+  m_Name: AlSaqr
+  m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
+  weaponId: saqr
+  displayName: Al-Saqr
+  arabicName: "\u0627\u0644\u0635\u0642\u0631"
+  weaponClass: 0
+  ammoType: 0
+  damage: 40
+  headshotMultiplier: 2.1
+  limbMultiplier: 0.9
+  pellets: 1
+  range: 350
+  falloffStart: 0.6
+  roundsPerMinute: 660
+  fireModes: 0000000002000000i
+  burstCount: 3
+  magazineSize: 30
+  reloadSeconds: 2.1
+  tacticalReloadSeconds: 1.8
+  adsSeconds: 0.18
+  drawSeconds: 0.45
+  hipSpread: 1.7
+  shoulderSpread: 0.9
+  adsSpread: 0.15
+  bloomPerShot: 0.12
+  bloomRecoveryPerSecond: 2.5
+  maxBloom: 1.5
+  movingMultiplier: 1.6
+  airborneMultiplier: 3
+  crouchMultiplier: 0.8
+  proneMultiplier: 0.6
+  recoilPattern:
+  - {x: 0, y: 0.55}
+  - {x: 0.05, y: 0.6}
+  - {x: -0.05, y: 0.65}
+  - {x: 0.1, y: 0.7}
+  - {x: 0.12, y: 0.7}
+  - {x: -0.1, y: 0.65}
+  - {x: -0.15, y: 0.6}
+  - {x: 0.15, y: 0.55}
+  - {x: 0.2, y: 0.55}
+  - {x: -0.2, y: 0.5}
+  recoilJitter: 0.06
+  adsRecoilMultiplier: 0.75
+  crouchRecoilMultiplier: 0.85
+  proneRecoilMultiplier: 0.65
+  recoilRecovery: 0.6
+  recoilResetSeconds: 0.35
+  defaultScope: 0
+  allowedScopes: 00000000010000000200000003000000040000000500000006000000i
+  moveSpeedMultiplier: 1
+  viewPrefab: {fileID: 0}
+  shotSound: {fileID: 0}
+  suppressedShotSound: {fileID: 0}
+  reloadSound: {fileID: 0}
+  drySound: {fileID: 0}

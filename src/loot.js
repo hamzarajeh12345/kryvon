@@ -21,6 +21,7 @@ export function rollItems(tier, type) {
   if (type === 'hospital') { m.heal = 3.2; m.boost = 3; }
   if (type === 'police') { m.weapon = 2; m.ammo = 1.8; m.armor = 2; }
   if (type === 'shop') { m.pack = 4; m.boost = 1.5; }
+  if (type === 'school') { m.weapon = 1.5; m.pack = 2.2; m.heal = 1.6; m.ammo = 1.3; }
   const cat = pickW([
     ['weapon', 22 * m.weapon], ['ammo', 20 * m.ammo], ['heal', 18 * m.heal], ['boost', (7 + tier) * m.boost],
     ['armor', 14 * m.armor], ['pack', 6 * m.pack], ['throw', 7 * m.throw], ['scope', (3 + tier * 2) * m.scope], ['attach', (7 + tier * 2) * m.weapon],

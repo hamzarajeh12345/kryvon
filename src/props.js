@@ -47,8 +47,16 @@ export function propGeometry(k, size, rot) {
   const parts = []; let mat = null;
   c.scene.traverse(o => {
     if (!o.isMesh) return;
-    const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
-    for (const n of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(n)) g.deleteAttribute(n);
+    const g = new THREE.BufferGeometry();
+    // meshopt/quantized files store Int16/Int8 normalised attributes: expand to float before transforming
+    for (const n of ['position', 'normal', 'uv']) {
+      const at = o.geometry.attributes[n]; if (!at) continue;
+      const out = new Float32Array(at.count * at.itemSize);
+      for (let i = 0; i < at.count; i++) for (let c = 0; c < at.itemSize; c++) out[i * at.itemSize + c] = at.getComponent ? at.getComponent(i, c) : [at.getX, at.getY, at.getZ][c].call(at, i);
+      g.setAttribute(n, new THREE.BufferAttribute(out, at.itemSize));
+    }
+    if (o.geometry.index) g.setIndex(Array.from(o.geometry.index.array));
+    g.applyMatrix4(o.matrixWorld);
     parts.push(g); mat = mat || o.material;
   });
   const geo = parts.length > 1 ? mergeGeometries(parts.map(p => p.index ? p.toNonIndexed() : p), false) : parts[0];

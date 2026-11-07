@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { HALF, GRID_N, CELL, ZONES, VILLAGES, MAP_SEED, STYLES, ROADS } from './config.js';
+import { HALF, GRID_N, CELL, ZONES, VILLAGES, MAP_SEED, STYLES, ROADS, MAP_SCALE as S } from './config.js';
 import { buildLandmarks } from './landmarks.js';
 import { buildStreets, buildRoadMesh } from './streets.js';
+import { propGeometry, propReady } from './props.js';
 
 // ---------- math / noise ----------
 export function mulberry32(a) {
@@ -35,14 +36,19 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 export const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
 const gauss = (x, z, cx, cz, r) => Math.exp(-((x - cx) ** 2 + (z - cz) ** 2) / (r * r));
 
-export const DEAD_SEA = { x: -70, z: 230, rx: 55, rz: 130 };
-export const deadSeaD = (x, z) => Math.hypot((x - DEAD_SEA.x) / DEAD_SEA.rx, (z - DEAD_SEA.z) / DEAD_SEA.rz);
-export const coastX = z => -560 + 45 * Math.sin(z * 0.004 + 0.6) + 50 * (fbm(z * 0.006, 3.3, 7, 3) - 0.5);
+// terrain is designed on ±800 m ("design space") and stretched by MAP_SCALE
+const DS = { x: -70, z: 230, rx: 55, rz: 130 };
+const deadSeaD0 = (x, z) => Math.hypot((x - DS.x) / DS.rx, (z - DS.z) / DS.rz);
+const coastX0 = z => -560 + 45 * Math.sin(z * 0.004 + 0.6) + 50 * (fbm(z * 0.006, 3.3, 7, 3) - 0.5);
+export const DEAD_SEA = { x: DS.x * S, z: DS.z * S, rx: DS.rx * S, rz: DS.rz * S };
+export const deadSeaD = (x, z) => deadSeaD0(x / S, z / S);
+export const coastX = z => coastX0(z / S) * S;
 
 const PETRA = ZONES.find(z => z.id === 'petra');
 const ALEPPO = ZONES.find(z => z.id === 'aleppo');
 
-export function naturalHeight(x, z) {
+export function naturalHeight(x, z) { return naturalHeight0(x / S, z / S); }
+function naturalHeight0(x, z) {
   let h = 5 + 9 * fbm(x * 0.004 + 10, z * 0.004 + 10, 1, 4);
   h += 75 * gauss(x, z, -420, -600, 220) * (0.55 + 0.45 * fbm(x * 0.02, z * 0.02, 2, 3)); // Lebanon / cedar range
   h += 18 * gauss(x, z, 90, -600, 260);
@@ -51,14 +57,14 @@ export function naturalHeight(x, z) {
   h += 24 * gauss(x, z, 270, 120, 160);    // Amman's jabals
   h += 30 * gauss(x, z, 340, 560, 210);    // Shara highlands
   h += 6 * fbm(x * 0.03, z * 0.03, 5, 2);
-  const d = deadSeaD(x, z);
+  const d = deadSeaD0(x, z);
   if (z > -260) { // Jordan rift valley
     const v = Math.exp(-((x + 70) ** 2) / (85 * 85)) * smooth(-260, -120, z);
     const floor = lerp(-6, 3, smooth(1.4, 2.4, d));
     h = lerp(h, floor, v);
   }
   if (d < 1.7) h = lerp(-22, h, smooth(0.75, 1.7, d)); // Dead Sea basin
-  const dc = x - coastX(z);
+  const dc = x - coastX0(z);
   h = lerp(-10, h, smooth(-50, 70, dc));             // Mediterranean
   return h;
 }
@@ -106,6 +112,7 @@ export class World {
     this.buildWater();
     const rng = mulberry32(MAP_SEED);
     this.buildStructures(rng);
+    this.buildPropHouses(mulberry32(MAP_SEED + 77));
     this.roadMesh = buildRoadMesh(this);
     this.buildRocks(rng);
     this.buildTrees(rng, preset);
@@ -193,15 +200,17 @@ export class World {
   biomeColor(x, z, h, ny, out) {
     let r = 0.62, g = 0.58, b = 0.42;
     const mix = (cr, cg, cb, t) => { r += (cr - r) * t; g += (cg - g) * t; b += (cb - b) * t; };
+    const wx = x, wz = z; x /= S; z /= S; // design space for the biome regions
     mix(0.33, 0.46, 0.25, smooth(-330, -470, z) * smooth(-60, -220, x));           // green north-west
     mix(0.80, 0.68, 0.47, smooth(200, 330, x) * smooth(-200, -320, z));            // Badia
     mix(0.82, 0.63, 0.43, smooth(400, 480, z) * smooth(-260, -160, x));            // Wadi Araba sands
     mix(0.50, 0.55, 0.30, smooth(260, 360, z) * smooth(-120, -220, x));            // olive plains
-    mix(0.74, 0.45, 0.37, smooth(175, 125, Math.hypot(x - PETRA.x, z - PETRA.z))); // Petra rose rock
-    if (this.waterLevel(x, z) === 0) mix(0.86, 0.79, 0.6, smooth(3.5, 1.2, h));    // beach
+    mix(0.74, 0.45, 0.37, smooth(175, 125, Math.hypot(wx - PETRA.x, wz - PETRA.z))); // Petra rose rock
+    if (this.waterLevel(wx, wz) === 0) mix(0.86, 0.79, 0.6, smooth(3.5, 1.2, h));    // beach
     else mix(0.85, 0.8, 0.7, smooth(-6, -9.5, h));                                  // salt shore
     mix(0.5, 0.45, 0.38, smooth(0.86, 0.7, ny));                                    // steep rock
     mix(0.95, 0.96, 0.98, smooth(54, 62, h) * smooth(-150, -300, z));               // snow caps (northern mountains only)
+    x = wx; z = wz;
     for (const f of this.flat) {
       const d = Math.hypot(x - f.x, z - f.z);
       if (d < f.fr) mix(0.63, 0.6, 0.55, 0.45 * smooth(f.fr, f.fr * 0.6, d));
@@ -347,7 +356,7 @@ export class World {
       if (s.ax === 'x') this.addBox(c, cy, s.fixed + offset, len, sy, thick, col, collide);
       else this.addBox(s.fixed + offset, cy, c, thick, sy, len, col, collide);
     };
-    const signColors = { hospital: 0xd23b3b, police: 0x2f5fb3, shop: 0x2f9e5b };
+    const signColors = { hospital: 0xd23b3b, police: 0x2f5fb3, shop: 0x2f9e5b, school: 0xd9a520 };
     sides.forEach((s, i) => {
       let gap = null;
       if (i === doorSide) {
@@ -476,6 +485,8 @@ export class World {
       }
       buildLandmarks(this, zone, occ, rng);
       buildStreets(this, zone, occ);
+      const nSchool = ['beirut', 'amman', 'damascus', 'jerusalem'].includes(zone.style) ? 2 : ['village', 'jerash', 'citadel', 'mountain', 'resort'].includes(zone.style) ? 1 : 0;
+      for (let k = 0; k < nSchool; k++) this.buildSchool(zone, occ, rng);
       let placed = 0;
       for (let tries = 0; tries < zone.buildings * 40 && placed < zone.buildings; tries++) {
         const a = rng() * Math.PI * 2, rr = Math.sqrt(rng()) * zone.br;
@@ -499,6 +510,106 @@ export class World {
     }
   }
 
+  // school compound: two-storey main block + side wing, perimeter wall with gate, flag pole, football pitch
+  buildSchool(zone, occ, rng) {
+    const W = 38, D = 30, st0 = STYLES[zone.style];
+    const st = { ...st0, wall: [0xeadcae, 0xf1e4bf, 0xe2d2a0] };
+    for (let t = 0; t < 160; t++) {
+      const a = rng() * Math.PI * 2, rr = zone.br * (0.3 + rng() * (t < 60 ? 0.8 : 1.3)) + (t < 60 ? 0 : W / 2);
+      const cx = zone.x + Math.cos(a) * rr, cz = zone.z + Math.sin(a) * rr;
+      const r = { minX: cx - W / 2, maxX: cx + W / 2, minZ: cz - D / 2, maxZ: cz + D / 2 };
+      if (this.overlaps(r, occ, 2)) continue;
+      let wet = false;
+      for (const [px, pz] of [[r.minX, r.minZ], [r.maxX, r.minZ], [r.minX, r.maxZ], [r.maxX, r.maxZ], [cx, cz]])
+        if (this.isWater(px, pz) || this.getHeight(px, pz) < this.waterLevel(px, pz) + 1) wet = true;
+      if (wet) continue;
+      const [m, M] = this.minH(r.minX, r.minZ, r.maxX, r.maxZ);
+      if (M - m > 2.5) continue;
+      this.addBuilding(cx, r.minZ + 6.5, 28, 10, 7.6, st, 'school', zone, rng);          // main block
+      this.addBuilding(r.minX + 6.5, cz + 5, 10, 13, 4.6, st, 'school', zone, rng);      // wing
+      const wall = 0xd8cfb8, wh = 2.2, g = this.getHeight(cx, cz);
+      this.addBox(cx, m + wh / 2 - 0.5, r.minZ, W, wh + 1, 0.3, wall);
+      this.addBox(r.minX, m + wh / 2 - 0.5, cz, 0.3, wh + 1, D, wall);
+      this.addBox(r.maxX, m + wh / 2 - 0.5, cz, 0.3, wh + 1, D, wall);
+      const gate = 6, side = (W - gate) / 2;                                              // front wall with a gate
+      this.addBox(r.minX + side / 2, m + wh / 2 - 0.5, r.maxZ, side, wh + 1, 0.3, wall);
+      this.addBox(r.maxX - side / 2, m + wh / 2 - 0.5, r.maxZ, side, wh + 1, 0.3, wall);
+      for (const s of [-1, 1]) this.addBox(cx + s * (gate / 2 + 0.3), m + 1.6, r.maxZ, 0.6, 3.6, 0.6, 0xbfb49a);
+      this.addBox(cx, m + 3.2, r.maxZ, gate + 1.2, 0.4, 0.4, 0x2f5a8a, false);           // gate sign
+      // flag pole and flag (three stripes + red triangle panel)
+      const fx = cx + 6, fz = r.maxZ - 3;
+      this.addBox(fx, g + 4.5, fz, 0.12, 9, 0.12, 0xdddddd, false);
+      [0x111111, 0xf4f4f4, 0x1e7a3a].forEach((c, i) => this.addBox(fx + 1.3, g + 8.4 - i * 0.42, fz, 2.4, 0.42, 0.05, c, false));
+      this.addBox(fx + 0.45, g + 7.98, fz, 0.7, 1.26, 0.06, 0xc8102e, false);
+      // football pitch: painted lines + two goals
+      const px = cx + 5, pz = cz + 4, pw = 20, pd = 12;
+      this.addBox(px, g + 0.03, pz, pw, 0.05, pd, 0x7a8a5a, false);
+      this.addBox(px, g + 0.06, pz, 0.15, 0.05, pd, 0xeeeeee, false);
+      for (const s of [-1, 1]) {
+        const gx = px + s * (pw / 2 - 0.3);
+        this.addBox(gx, g + 1.1, pz - 1.6, 0.1, 2.2, 0.1, 0xffffff, false);
+        this.addBox(gx, g + 1.1, pz + 1.6, 0.1, 2.2, 0.1, 0xffffff, false);
+        this.addBox(gx, g + 2.2, pz, 0.1, 0.1, 3.3, 0xffffff, false);
+      }
+      for (let k = 0; k < 3; k++) {                                                       // loot in the yard too
+        const lx = lerp(r.minX + 14, r.maxX - 2, rng()), lz = lerp(cz - 2, r.maxZ - 2, rng());
+        this.lootSpots.push({ x: lx, y: this.getHeight(lx, lz), z: lz, tier: Math.max(2, zone.tier), type: 'school', zone: zone.id });
+      }
+      occ.push(r);
+      (this.schools = this.schools || []).push({ x: cx, z: cz, zone: zone.id });
+      return true;
+    }
+    return false;
+  }
+
+  // generated 3D houses (solid, not enterable) around towns: apartments in cities, stone villas in villages
+  buildPropHouses(rng) {
+    const KIND = {
+      beirut: [['h_apartment', 5], ['h_villa', 2], ['h_modern', 1]], amman: [['h_apartment', 5], ['h_modern', 2]],
+      damascus: [['h_apartment', 1], ['h_villa', 2]], jerusalem: [['h_villa', 2], ['h_apartment', 1]], resort: [['h_modern', 3], ['h_villa', 1]],
+      village: [['h_villa', 3], ['h_modern', 1], ['h_apartment', 1]], jerash: [['h_villa', 1]], citadel: [['h_villa', 1]], mountain: [['h_villa', 1]],
+    };
+    const SIZE = { h_apartment: 13, h_villa: 9, h_modern: 7.5 };
+    const geo = {};
+    for (const k in SIZE) if (propReady(k)) { geo[k] = propGeometry(k, { height: SIZE[k] }); geo[k].geometry.computeBoundingBox(); }
+    if (!Object.keys(geo).length) return;
+    const placed = {};
+    for (const zone of this.zones) {
+      const kinds = (KIND[zone.style] || []).filter(([k]) => geo[k]); if (!kinds.length) continue;
+      const total = kinds.reduce((a, b) => a + b[1], 0);
+      const want = Math.round(zone.buildings * (zone.style === 'village' ? 0.6 : 0.5)) + 3;
+      const occ = zone.occ || [];
+      let n = 0;
+      for (let t = 0; t < want * 30 && n < want; t++) {
+        let pr = rng() * total, key = kinds[0][0]; for (const [k, w] of kinds) { pr -= w; if (pr <= 0) { key = k; break; } }
+        const bb = geo[key].geometry.boundingBox, q = (rng() * 4) | 0, yaw = q * Math.PI / 2;
+        let w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z; if (q & 1) [w, d] = [d, w];
+        const a = rng() * Math.PI * 2, rr = zone.br * (0.45 + rng() * 0.75);
+        const x = zone.x + Math.cos(a) * rr, z = zone.z + Math.sin(a) * rr;
+        const r = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
+        if (Math.abs(x) > HALF - 20 || Math.abs(z) > HALF - 20 || this.overlaps(r, occ, 3)) continue;
+        if ([[x, z], [r.minX, r.minZ], [r.maxX, r.minZ], [r.minX, r.maxZ], [r.maxX, r.maxZ]].some(([px, pz]) => this.roadAt(px, pz) > 0.25)) continue;
+        let wet = false;
+        for (const [px, pz] of [[r.minX, r.minZ], [r.maxX, r.minZ], [r.minX, r.maxZ], [r.maxX, r.maxZ], [x, z]])
+          if (this.isWater(px, pz) || this.getHeight(px, pz) < this.waterLevel(px, pz) + 1) wet = true;
+        if (wet) continue;
+        const [m, M] = this.minH(r.minX, r.minZ, r.maxX, r.maxZ);
+        if (M - m > 2.5) continue;
+        (placed[key] = placed[key] || []).push({ x, y: m - 0.25, z, yaw });
+        this.colliders.push({ minX: r.minX + 0.3, maxX: r.maxX - 0.3, minY: m - 1, maxY: m + bb.max.y - 0.5, minZ: r.minZ + 0.3, maxZ: r.maxZ - 0.3, s: 0 });
+        occ.push(r); n++;
+      }
+    }
+    const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0), ONE = new THREE.Vector3(1, 1, 1);
+    this.propHouses = [];
+    for (const k in placed) {
+      const list = placed[k], mesh = new THREE.InstancedMesh(geo[k].geometry, geo[k].material, list.length);
+      list.forEach((h, i) => mesh.setMatrixAt(i, M4.compose(new THREE.Vector3(h.x, h.y, h.z), Q.setFromAxisAngle(UP, h.yaw), ONE)));
+      mesh.castShadow = mesh.receiveShadow = true; mesh.frustumCulled = false;
+      this.scene.add(mesh); this.propHouses.push(mesh);
+    }
+  }
+
   nearZone(x, z, pad = 1) {
     for (const zn of this.zones) { const d = Math.hypot(x - zn.x, z - zn.z); if (d < zn.br * pad + 12) return true; }
     return false;
@@ -507,10 +618,10 @@ export class World {
   buildRocks(rng) {
     const geo = new THREE.DodecahedronGeometry(1, 0);
     const list = [];
-    for (let i = 0; i < 4000 && list.length < 520; i++) {
+    for (let i = 0; i < 4000 * S * S && list.length < 520 * S * S; i++) {
       const x = (rng() * 2 - 1) * (HALF - 10), z = (rng() * 2 - 1) * (HALF - 10);
       if (this.isWater(x, z) || this.nearZone(x, z)) continue;
-      const desert = (x > 220 && z < -200) || (z > 420) || (x > 380);
+      const desert = (x / S > 220 && z / S < -200) || (z / S > 420) || (x / S > 380);
       if (!desert && rng() < 0.65) continue;
       const s = 1.1 + rng() * 2.2;
       list.push({ x, z, s, y: this.getHeight(x, z), rot: rng() * 6.28 });
@@ -533,15 +644,15 @@ export class World {
   buildTrees(rng, preset) {
     const dens = preset.trees;
     const cedars = [], olives = [];
-    for (let i = 0; i < 9000 * dens; i++) {
-      const x = -580 + rng() * 520, z = -790 + rng() * 430;
+    for (let i = 0; i < 9000 * dens * S * S; i++) {
+      const x = (-580 + rng() * 520) * S, z = (-790 + rng() * 430) * S;
       const h = this.getHeight(x, z);
       if (h < 10 || h > 58 || this.nearZone(x, z, 0.7) || fbm(x * 0.012, z * 0.012, 21, 2) < 0.45) continue;
       cedars.push({ x, z, y: h, s: 0.8 + rng() * 0.7 });
     }
-    for (let i = 0; i < 7000 * dens; i++) {
-      const x = (rng() * 2 - 1) * HALF, z = -300 + rng() * 1090;
-      const plain = (x < -120 && z > 250) || (Math.hypot(x - 310, z + 170) < 190) || (Math.hypot(x + 300, z - 140) < 200);
+    for (let i = 0; i < 7000 * dens * S * S; i++) {
+      const x = (rng() * 2 - 1) * HALF, z = (-300 + rng() * 1090) * S, xd = x / S, zd = z / S;
+      const plain = (xd < -120 && zd > 250) || (Math.hypot(xd - 310, zd + 170) < 190) || (Math.hypot(xd + 300, zd - 140) < 200);
       if (!plain || this.isWater(x, z) || this.nearZone(x, z, 0.9)) continue;
       if (fbm(x * 0.02, z * 0.02, 33, 2) < 0.5) continue;
       olives.push({ x, z, y: this.getHeight(x, z), s: 0.7 + rng() * 0.6 });

@@ -279,9 +279,9 @@ export class VehicleSystem {
     if (opts.spots) { for (const s of opts.spots) this.spawn(s.type, s.x, s.z, s.yaw, rng); return; }
     const spots = parkingSpots(this.world, rng).sort(() => rng() - 0.5);
     for (const s of spots) {
-      if (this.list.length >= (opts.max || 55)) break;
+      if (this.list.length >= (opts.max || 110)) break;
       if (this.world.insideBuilding(s.x, s.z, 1000) || this.list.some(v => Math.hypot(v.pos.x - s.x, v.pos.z - s.z) < 9)) continue;
-      const desert = (s.x > 250 && s.z < -200) || s.z > 420;
+      const desert = (s.x / 1.5 > 250 && s.z / 1.5 < -200) || s.z / 1.5 > 420;
       const pick = (pairs) => { let t = 0; for (const p of pairs) t += p[1]; let r = rng() * t; for (const p of pairs) { r -= p[1]; if (r <= 0) return p[0]; } return pairs[0][0]; };
       const type = desert ? pick([['buggy', 4], ['pickup', 4], ['moto', 2], ['armored', 1]]) : pick([['pickup', 3], ['taxi', 3], ['minibus', 1.5], ['moto', 2], ['buggy', 1], ['trike', 1.5], ['armored', 0.5]]);
       this.spawn(type, s.x, s.z, s.yaw, rng);

@@ -24,7 +24,7 @@ const pickWeighted = arr => { let s = 0; for (const a of arr) s += a.w; let r = 
 
 // ---------------- plane ----------------
 class Plane {
-  constructor(game, alt = 320, speed = 85, through = null, len = 2500) {
+  constructor(game, alt = 320, speed = 85, through = null, len = 2500 * HALF / 800) {
     this.game = game;
     const a = Math.random() * Math.PI * 2;
     this.dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
@@ -419,7 +419,7 @@ class Game {
     this.clouds = [];
     for (let i = 0; i < cloudy; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, fog: false, depthWrite: false, transparent: true, opacity: 0.55 + Math.random() * 0.35, color: this.weather.id === 'rain' ? 0x8a929a : 0xffffff }));
-      s.position.set((Math.random() * 2 - 1) * 1300, 240 + Math.random() * 160, (Math.random() * 2 - 1) * 1300);
+      s.position.set((Math.random() * 2 - 1) * HALF * 1.6, 240 + Math.random() * 160, (Math.random() * 2 - 1) * HALF * 1.6);
       s.scale.set(260 + Math.random() * 260, 110 + Math.random() * 90, 1);
       this.scene.add(s); this.clouds.push(s);
     }
@@ -1021,7 +1021,7 @@ class Game {
     this.sun.position.copy(c).add(this.sunOff); this.sun.target.position.copy(c);
     this.skyMesh.position.copy(cam.position);
     if (this.sunSprite) this.sunSprite.position.copy(cam.position).addScaledVector(this.sunOff.clone().normalize(), 1900);
-    if (this.clouds) for (const c of this.clouds) { c.position.x += dt * 3; if (c.position.x > 1400) c.position.x = -1400; }
+    if (this.clouds) for (const c of this.clouds) { c.position.x += dt * 3; if (c.position.x > HALF * 1.75) c.position.x = -HALF * 1.75; }
   }
 
   updateZoneName() {

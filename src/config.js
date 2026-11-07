@@ -1,7 +1,8 @@
 // KRYVON – game data. All names are original/fictional (see GDD §7 licensing note).
 // Map is scaled down for the browser prototype: 1 unit = 1 m, 1.6 x 1.6 km (GDD target 6 x 6 km).
 
-export const HALF = 800;          // map spans -HALF..HALF on X (east) and Z (south)
+export const MAP_SCALE = 1.5;     // the design below is laid out on ±800 m and stretched by this factor
+export const HALF = 800 * MAP_SCALE; // map spans -HALF..HALF on X (east) and Z (south)
 export const CELL = 5;            // heightfield spacing (m)
 export const GRID_N = HALF * 2 / CELL + 1;
 export const TOTAL_PLAYERS = 100;
@@ -35,7 +36,18 @@ export const VILLAGES = [
   { id: 'v7', name: 'Ras Al-Ein',    ar: 'رأس العين',   x: 140,  z: 390 },
   { id: 'v8', name: 'Al-Karak',      ar: 'الكرك',       x: 540,  z: 330 },
   { id: 'v9', name: 'Wadi Musa',     ar: 'وادي موسى',   x: 115,  z: 560 },
+  { id: 'v10', name: 'Homs',         ar: 'حمص',         x: -170, z: -650 },
+  { id: 'v11', name: 'Daraa',        ar: 'درعا',        x: 110,  z: -300 },
+  { id: 'v12', name: 'Mafraq',       ar: 'المفرق',      x: 420,  z: -300 },
+  { id: 'v13', name: 'Irbid',        ar: 'إربد',        x: 420,  z: -40 },
+  { id: 'v14', name: 'Madaba',       ar: 'مادبا',       x: 170,  z: 290 },
+  { id: 'v15', name: 'Hebron',       ar: 'الخليل',      x: -200, z: 260 },
+  { id: 'v16', name: "Ma'an",        ar: 'معان',        x: 560,  z: 500 },
+  { id: 'v17', name: 'Tyre',         ar: 'صور',         x: -450, z: -60 },
 ].map(v => ({ ...v, r: 40, tier: 1, style: 'village', buildings: 5, fr: 30, br: 30, minor: true }));
+
+// stretch the layout (town sizes stay the same, distances grow); more buildings per town
+for (const z of [...ZONES, ...VILLAGES]) { z.x *= MAP_SCALE; z.z *= MAP_SCALE; z.buildings = Math.round(z.buildings * 2.2); z.br = Math.round(z.br * 1.3); }
 
 export const STYLES = {
   beirut:    { wall: [0xe8e4dc, 0xd9cfc0, 0xc9d3d8, 0xf0e6d2], roof: 0x9a4b36, h: [5, 9],   size: [8, 13], gap: 4 },
@@ -113,6 +125,8 @@ export const RING = [
   { wait: 20, shrink: 25, r: 2,   dps: 14,  water: 0 },
 ];
 
+for (const p of RING) p.r *= MAP_SCALE;
+
 export const AIRDROP_INTERVAL = [100, 140]; // GDD says 180–240 s; shortened for the shorter prototype match
 
 export const WEATHER = [
@@ -157,6 +171,7 @@ export const MAPS = [
   { id: 'south',    name: 'Petra & Wadi Araba',   ar: 'البتراء ووادي عربة',   desc: 'صحراء مفتوحة وصخور وردية: الخزنة، الدير، وأعمدة الرمل. للقناصين.', cx: 160,  cz: 480,  radius: 380,  players: 50,  size: '0.75 كم', time: '~12 د' },
   { id: 'training', name: 'Training Grounds',     ar: 'ساحة التدريب',        desc: 'كل الأسلحة والسكوبات وأهداف ثابتة. جرّب الحساسية بدون طوق.', cx: 120,  cz: -10,  radius: 0,    players: 1,   size: '—', time: 'بلا وقت', training: true },
 ];
+for (const m of MAPS) { m.cx *= MAP_SCALE; m.cz *= MAP_SCALE; m.radius *= MAP_SCALE; }
 
 // ---------------- Landmarks (آثار) ----------------
 export const LANDMARKS = [
@@ -200,5 +215,6 @@ export const ROADS = [
   ['beirut', 'damascus'], ['beirut', 'cedars'], ['cedars', 'v1'], ['v1', 'aleppo'], ['aleppo', 'v2'], ['v2', 'badia'],
   ['damascus', 'v1'], ['damascus', 'v3'], ['v3', 'jerusalem'], ['damascus', 'jerash'], ['jerash', 'v5'], ['v2', 'jerash'],
   ['jerash', 'v4'], ['v4', 'amman'], ['amman', 'deadsea'], ['deadsea', 'jerusalem'], ['jerusalem', 'olives'], ['olives', 'v6'],
-  ['v6', 'araba'], ['amman', 'v8'], ['v8', 'petra'], ['petra', 'v9'], ['v9', 'araba'], ['v7', 'v9'], ['deadsea', 'v7'], ['v5', 'badia'],
+['v10', 'aleppo'], ['v10', 'cedars'], ['v11', 'damascus'], ['v11', 'v2'], ['v12', 'badia'], ['v12', 'jerash'], ['v13', 'jerash'], ['v13', 'v5'], ['v14', 'amman'], ['v14', 'deadsea'], ['v15', 'jerusalem'], ['v15', 'v6'], ['v16', 'petra'], ['v16', 'v8'], ['v17', 'beirut'], ['v17', 'v3'],
+    ['v6', 'araba'], ['amman', 'v8'], ['v8', 'petra'], ['petra', 'v9'], ['v9', 'araba'], ['v7', 'v9'], ['deadsea', 'v7'], ['v5', 'badia'],
 ];

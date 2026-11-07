@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RING, HALF } from './config.js';
+import { RING, HALF, MAP_SCALE } from './config.js';
 
 // ---------------- Al-Tawq (The Ring) ----------------
 export class Ring {
@@ -7,7 +7,7 @@ export class Ring {
     this.game = game; this.world = game.world;
     const m = game.map;
     // smaller maps: scale every circle by the area size, and shorten the timers a bit
-    this.k = m.training ? 1 : Math.min(1, m.radius / 1150);
+    this.k = m.training ? 1 : Math.min(1, m.radius / (1150 * MAP_SCALE));
     this.tk = this.k < 1 ? 0.75 + 0.25 * this.k : 1;
     this.cur = { x: m.cx, z: m.cz, r: m.training ? 5000 : m.radius };
     this.phase = 0; this.state = m.training ? 'final' : 'wait';

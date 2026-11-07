@@ -105,6 +105,12 @@ namespace Kryvon
 
         public void Kill(DamageInfo info) => Die(info);
 
+        /// <summary>Back to full health (training dummies, respawn modes).</summary>
+        public void Respawn()
+        {
+            IsAlive = true; IsKnocked = false; KnockCount = 0; Current = maxHealth;
+        }
+
         void Die(DamageInfo info)
         {
             if (!IsAlive) return;

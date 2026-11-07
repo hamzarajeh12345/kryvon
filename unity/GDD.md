@@ -116,7 +116,9 @@ Assets/
 
 ## 5. خطوة بخطوة: تشغيل أول نسخة
 
-السكريبتات جاهزة بمجلد `unity/Scripts/` بهالمشروع. انسخ مجلد `Scripts` لـ `Assets/_Kryvon/Scripts`.
+**أسرع طريقة:** مجلد `unity/` هو مشروع Unity جاهز. افتحه من Unity Hub (Add → Add project from disk)، وأول ما يفتح بيبني مشهد تجربة `Assets/_Kryvon/Scenes/Test.unity` لحاله (أو من القائمة KRYVON → Rebuild Test Scene). اكبس Play وخلص.
+
+**أو يدوياً** بمشروع جديد، بالخطوات التالية (السكريبتات بـ `unity/Assets/_Kryvon/Scripts`):
 
 1. **مشروع جديد:** Unity Hub → New Project → **Universal 3D** (Unity 6).
 2. **Input System:** Window → Package Manager → تأكد إنه **Input System** منزّل. إذا سألك عن تفعيله، اختار Yes (بيعيد تشغيل المحرر).

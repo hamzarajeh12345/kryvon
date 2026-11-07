@@ -562,52 +562,79 @@ export class World {
     return false;
   }
 
-  // generated 3D houses (solid, not enterable) around towns: apartments in cities, stone villas in villages
+  // generated 3D buildings (solid, not enterable): apartments, towers, old stone houses, shops, mosques, gas stations
   buildPropHouses(rng) {
     const KIND = {
-      beirut: [['h_apartment', 5], ['h_villa', 2], ['h_modern', 1]], amman: [['h_apartment', 5], ['h_modern', 2]],
-      damascus: [['h_apartment', 1], ['h_villa', 2]], jerusalem: [['h_villa', 2], ['h_apartment', 1]], resort: [['h_modern', 3], ['h_villa', 1]],
-      village: [['h_villa', 3], ['h_modern', 1], ['h_apartment', 1]], jerash: [['h_villa', 1]], citadel: [['h_villa', 1]], mountain: [['h_villa', 1]],
+      beirut: [['h_apartment', 4], ['h_tower', 3], ['h_shops', 2], ['h_villa', 2], ['h_modern', 1]],
+      amman: [['h_apartment', 3], ['h_tower', 4], ['h_shops', 2], ['h_modern', 1]],
+      damascus: [['h_oldstone', 4], ['h_shops', 2], ['h_apartment', 1], ['h_villa', 1]],
+      jerusalem: [['h_oldstone', 3], ['h_villa', 2], ['h_shops', 1]],
+      citadel: [['h_oldstone', 3], ['h_villa', 1]], resort: [['h_modern', 3], ['h_villa', 1], ['h_shops', 1]],
+      village: [['h_villa', 3], ['h_oldstone', 1], ['h_shops', 1], ['h_modern', 1], ['h_apartment', 1]],
+      jerash: [['h_villa', 2], ['h_oldstone', 1]], mountain: [['h_villa', 1]],
     };
-    const SIZE = { h_apartment: 13, h_villa: 9, h_modern: 7.5 };
+    const SIZE = { h_apartment: 13, h_villa: 9, h_modern: 7.5, h_tower: 20, h_oldstone: 8, h_shops: 8, h_mosque: 17, h_gas: 6 };
     const geo = {};
     for (const k in SIZE) if (propReady(k)) { geo[k] = propGeometry(k, { height: SIZE[k] }); geo[k].geometry.computeBoundingBox(); }
     if (!Object.keys(geo).length) return;
     const placed = {};
+    const place = (key, x, z, q, occ, avoidRoad = true) => {
+      const bb = geo[key].geometry.boundingBox;
+      let w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z; if (q & 1) [w, d] = [d, w];
+      const r = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
+      if (Math.abs(x) > HALF - 20 || Math.abs(z) > HALF - 20 || this.overlaps(r, occ, 3)) return false;
+      const pts = [[x, z], [r.minX, r.minZ], [r.maxX, r.minZ], [r.minX, r.maxZ], [r.maxX, r.maxZ]];
+      if (avoidRoad && pts.some(([px, pz]) => this.roadAt(px, pz) > 0.25)) return false;
+      if (pts.some(([px, pz]) => this.isWater(px, pz) || this.getHeight(px, pz) < this.waterLevel(px, pz) + 1)) return false;
+      const [m, M] = this.minH(r.minX, r.minZ, r.maxX, r.maxZ);
+      if (M - m > 2.5) return false;
+      (placed[key] = placed[key] || []).push({ x, y: m - 0.25, z, yaw: q * Math.PI / 2 });
+      this.colliders.push({ minX: r.minX + 0.3, maxX: r.maxX - 0.3, minY: m - 1, maxY: m + bb.max.y - 0.5, minZ: r.minZ + 0.3, maxZ: r.maxZ - 0.3, s: 0 });
+      occ.push(r);
+      return true;
+    };
     for (const zone of this.zones) {
       const kinds = (KIND[zone.style] || []).filter(([k]) => geo[k]); if (!kinds.length) continue;
       const total = kinds.reduce((a, b) => a + b[1], 0);
       const want = Math.round(zone.buildings * (zone.style === 'village' ? 0.6 : 0.5)) + 3;
-      const occ = zone.occ || [];
+      const occ = zone.occ || (zone.occ = []);
+      const forced = geo.h_mosque && zone.style !== 'resort' ? ['h_mosque'] : [];   // every town gets its mosque
       let n = 0;
       for (let t = 0; t < want * 30 && n < want; t++) {
-        let pr = rng() * total, key = kinds[0][0]; for (const [k, w] of kinds) { pr -= w; if (pr <= 0) { key = k; break; } }
-        const bb = geo[key].geometry.boundingBox, q = (rng() * 4) | 0, yaw = q * Math.PI / 2;
-        let w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z; if (q & 1) [w, d] = [d, w];
-        const a = rng() * Math.PI * 2, rr = zone.br * (0.45 + rng() * 0.75);
-        const x = zone.x + Math.cos(a) * rr, z = zone.z + Math.sin(a) * rr;
-        const r = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
-        if (Math.abs(x) > HALF - 20 || Math.abs(z) > HALF - 20 || this.overlaps(r, occ, 3)) continue;
-        if ([[x, z], [r.minX, r.minZ], [r.maxX, r.minZ], [r.minX, r.maxZ], [r.maxX, r.maxZ]].some(([px, pz]) => this.roadAt(px, pz) > 0.25)) continue;
-        let wet = false;
-        for (const [px, pz] of [[r.minX, r.minZ], [r.maxX, r.minZ], [r.minX, r.maxZ], [r.maxX, r.maxZ], [x, z]])
-          if (this.isWater(px, pz) || this.getHeight(px, pz) < this.waterLevel(px, pz) + 1) wet = true;
-        if (wet) continue;
-        const [m, M] = this.minH(r.minX, r.minZ, r.maxX, r.maxZ);
-        if (M - m > 2.5) continue;
-        (placed[key] = placed[key] || []).push({ x, y: m - 0.25, z, yaw });
-        this.colliders.push({ minX: r.minX + 0.3, maxX: r.maxX - 0.3, minY: m - 1, maxY: m + bb.max.y - 0.5, minZ: r.minZ + 0.3, maxZ: r.maxZ - 0.3, s: 0 });
-        occ.push(r); n++;
+        let key = forced[0];
+        if (!key) { let pr = rng() * total; key = kinds[0][0]; for (const [k, w] of kinds) { pr -= w; if (pr <= 0) { key = k; break; } } }
+        const a = rng() * Math.PI * 2, rr = zone.br * (forced.length ? 0.2 + rng() * 0.6 : 0.45 + rng() * 0.75);
+        if (place(key, zone.x + Math.cos(a) * rr, zone.z + Math.sin(a) * rr, (rng() * 4) | 0, occ)) { n++; if (forced[0] === key) forced.shift(); }
+        if (forced.length && t > 40) forced.shift();
+      }
+    }
+    // gas stations beside the highways, facing the road
+    if (geo.h_gas) {
+      const occ = [];
+      for (const zn of this.zones) if (zn.occ) occ.push(...zn.occ);
+      for (const L of this.roadLines) {
+        if (!L.major || L.pts.length < 8) continue;
+        for (const t of [0.35, 0.7]) {
+          const i = Math.floor(L.pts.length * t), [x0, z0] = L.pts[i], [x1, z1] = L.pts[i + 1];
+          const dl = Math.hypot(x1 - x0, z1 - z0) || 1, dx = (x1 - x0) / dl, dz = (z1 - z0) / dl;
+          const side = rng() < 0.5 ? 1 : -1, nx = -dz * side, nz = dx * side;
+          if (this.nearZone(x0, z0, 0.8)) continue;
+          // face the road: model front is -Z after placement; pick the quarter turn closest to the road normal
+          const q = ((Math.round(Math.atan2(nx, nz) / (Math.PI / 2)) % 4) + 4) % 4;
+          place('h_gas', x0 + nx * 16, z0 + nz * 16, q, occ, false);
+        }
       }
     }
     const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0), ONE = new THREE.Vector3(1, 1, 1);
     this.propHouses = [];
+    this.propCounts = {};
     for (const k in placed) {
       const list = placed[k], mesh = new THREE.InstancedMesh(geo[k].geometry, geo[k].material, list.length);
       list.forEach((h, i) => mesh.setMatrixAt(i, M4.compose(new THREE.Vector3(h.x, h.y, h.z), Q.setFromAxisAngle(UP, h.yaw), ONE)));
       mesh.castShadow = mesh.receiveShadow = true; mesh.frustumCulled = false;
-      this.scene.add(mesh); this.propHouses.push(mesh);
+      this.scene.add(mesh); this.propHouses.push(mesh); this.propCounts[k] = list.length;
     }
+    this.gasStations = (placed.h_gas || []).map(h => ({ x: h.x, z: h.z }));
   }
 
   nearZone(x, z, pad = 1) {

@@ -13,7 +13,7 @@ const WRECK = new THREE.MeshLambertMaterial({ color: 0x2a2724 });
 import { propClone, propReady } from './props.js';
 
 // generated 3D model per vehicle type (procedural model is the fallback)
-const MODEL = { pickup: 'v_pickup', taxi: 'v_sedan', buggy: 'v_jeep', moto: 'v_moto', armored: 'v_armored', trike: 'v_trike' };
+const MODEL = { minibus: 'v_minibus', pickup: 'v_pickup', taxi: 'v_sedan', buggy: 'v_jeep', moto: 'v_moto', armored: 'v_armored', trike: 'v_trike' };
 const PROCEDURAL = new Set(['pickup', 'taxi', 'minibus', 'buggy', 'moto']);
 
 export const VEHICLES = {

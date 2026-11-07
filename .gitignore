@@ -15,3 +15,9 @@ unity/.vs/
 # raw Hyper3D downloads and reference art (local only)
 /assets/models/
 /assets/refs/
+/unity/Assets/_Kryvon/Models/
+/unity/Assets/_Kryvon/Models.meta
+/unity/Assets/_Kryvon/ThirdParty/
+/unity/Assets/_Kryvon/ThirdParty.meta
+/unity/kryvon_cmd.*
+/unity/*.png

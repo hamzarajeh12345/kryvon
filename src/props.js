@@ -6,7 +6,8 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const PROP_KEYS = ['v_pickup', 'v_sedan', 'v_jeep', 'v_armored', 'v_moto', 'v_trike', 'jet',
-  'w_ar', 'w_smg', 'w_shotgun', 'w_pistol', 'w_sniper', 'w_lmg', 'w_rocket', 'h_apartment', 'h_villa', 'h_modern'];
+  'w_ar', 'w_smg', 'w_shotgun', 'w_pistol', 'w_sniper', 'w_lmg', 'w_rocket', 'h_apartment', 'h_villa', 'h_modern',
+  'v_minibus', 'h_oldstone', 'h_shops', 'h_mosque', 'h_gas', 'h_tower'];
 const CACHE = {};
 let pending = null;
 

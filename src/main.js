@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { loadHeroes } from './heroes.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { HALF, BOT_NAMES, WEAPONS, ITEMS, PRESETS, WEATHER, AIRDROP_INTERVAL, RARITY_COLORS, AMMO, ARMOR, ATTACHMENTS, ATT_SLOTS, QUICK_CHAT, ZONES } from './config.js';
 import { World, clamp } from './world.js';
 import { Actor, rayActor, itemName, itemRarity, magCap, recoilMul, spreadMul, suppressed } from './actor.js';
@@ -64,7 +66,8 @@ class Game {
     this.audio.setVolumes(settings.audio);
     $('lobby').style.display = 'none'; $('auth').style.display = 'none';
     $('loading').style.display = 'flex';
-    setTimeout(() => this.build(), 50);
+    const lm = document.getElementById('loadmsg'); if (lm) lm.textContent = 'تحميل الشخصيات…';
+    setTimeout(() => loadHeroes().catch(() => {}).then(() => this.build()), 50);
   }
 
   build() {
@@ -80,6 +83,7 @@ class Game {
     r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.95;
     r.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene();
+    { const pm = new THREE.PMREMGenerator(r); this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; pm.dispose(); }
     this.camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 2600);
     addEventListener('resize', () => { r.setSize(innerWidth, innerHeight); this.camera.aspect = innerWidth / innerHeight; this.camera.updateProjectionMatrix(); });
 

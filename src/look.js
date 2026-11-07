@@ -23,23 +23,26 @@ export const LOOK = {
     patch: [['none', 'بدون'], ['jo', 'علم الأردن'], ['crown', 'تاج'], ['olive', 'غصن زيتون'], ['medic', 'هلال طبي']],
     gear: [['none', 'بدون'], ['medic', 'شنطة إسعاف'], ['drone', 'درون على الظهر'], ['radio', 'جهاز لاسلكي']],
     boots: [['black', 'سود'], ['tan', 'بيج']],
+    hero: [['none', 'بدون'], ['hamza', 'حمزة'], ['sara', 'سارة'], ['recon', 'راصدة'], ['medic', 'حكيم'], ['engineer', 'مهندسة'], ['heavy', 'درع']],
   },
   defaults: {
     sex: 'm', skin: 2, face: 0, build: 'normal', eyes: 0, hair: 'curly', hairColor: 0, beard: 'full', glasses: 'aviator', lips: 'natural',
     hijab: false, hijabColor: 0, top: 'tee', topColor: 0, topPattern: 'plain', vest: 'plate', vestColor: 0, pantsColor: 0, pantsPattern: 'plain',
     scarf: 'shemagh_bw', gloves: true, patch: 'none', tags: false, boots: 'black',
-    headwear: 'none', gear: 'none', watch: false, patchBoth: false,
+    headwear: 'none', gear: 'none', watch: false, patchBoth: false, hero: 'none',
   },
 };
 
 // ready-made characters – pick one, then change anything
 export const PRESET_LOOKS = [
+  { id: 'hamza',    ar: 'حمزة',   role: 'المهاجم',     look: { hero: 'hamza', build: 'heavy', top: 'tee', vest: 'plate', scarf: 'shemagh_bw', hair: 'curly', beard: 'full', glasses: 'aviator', watch: true } },
+  { id: 'sara',     ar: 'سارة',   role: 'القنّاصة',     look: { hero: 'sara', sex: 'f', skin: 1, hijab: true, hijabColor: 0, beard: 'none', glasses: 'none', lips: 'red', top: 'longsleeve', vest: 'plate', scarf: 'none', patch: 'jo', patchBoth: true, build: 'slim', watch: true } },
   { id: 'saqr',     ar: 'صقر',    role: 'المهاجم',     look: { build: 'heavy', top: 'tank', vest: 'harness', scarf: 'none', patch: 'jo', tags: true, watch: true } },
   { id: 'nashmiya', ar: 'نشمية',  role: 'القنّاصة',     look: { sex: 'f', skin: 1, eyes: 1, hijab: true, hijabColor: 0, beard: 'none', glasses: 'aviator', lips: 'red', top: 'longsleeve', topPattern: 'digital', pantsPattern: 'digital', scarf: 'none', patch: 'jo', build: 'slim', watch: true } },
-  { id: 'rasida',   ar: 'راصدة',  role: 'الاستطلاع',    look: { sex: 'f', skin: 1, hair: 'ponytail', hairColor: 1, beard: 'none', glasses: 'none', top: 'longsleeve', topColor: 3, topPattern: 'digital', pantsColor: 3, pantsPattern: 'digital', vest: 'plate', vestColor: 2, scarf: 'none', headwear: 'cap_nvg', patch: 'jo', build: 'slim' } },
-  { id: 'hakeem',   ar: 'حكيم',   role: 'المسعف',       look: { top: 'thobe', topColor: 5, pantsColor: 5, hair: 'short', beard: 'full', glasses: 'none', vest: 'none', scarf: 'none', headwear: 'ghutra', gear: 'medic', gloves: false, boots: 'tan', patch: 'medic' } },
-  { id: 'muhandisa',ar: 'مهندسة', role: 'المهندسة',     look: { sex: 'f', skin: 2, hair: 'ponytail', hairColor: 2, beard: 'none', glasses: 'none', top: 'jacket', topColor: 2, pantsColor: 2, vest: 'harness', vestColor: 4, scarf: 'none', headwear: 'headset', gear: 'drone', patch: 'jo', build: 'slim' } },
-  { id: 'dir3',     ar: 'درع',    role: 'الثقيل',       look: { build: 'heavy', top: 'armor', topColor: 2, pantsColor: 2, pantsPattern: 'camo', vest: 'plate', vestColor: 3, headwear: 'heavy_helmet', glasses: 'none', scarf: 'none', beard: 'stubble', gear: 'radio' } },
+  { id: 'rasida',   ar: 'راصدة',  role: 'الاستطلاع',    look: { hero: 'recon', sex: 'f', skin: 1, hair: 'ponytail', hairColor: 1, beard: 'none', glasses: 'none', top: 'longsleeve', topColor: 3, topPattern: 'digital', pantsColor: 3, pantsPattern: 'digital', vest: 'plate', vestColor: 2, scarf: 'none', headwear: 'cap_nvg', patch: 'jo', build: 'slim' } },
+  { id: 'hakeem',   ar: 'حكيم',   role: 'المسعف',       look: { hero: 'medic', top: 'thobe', topColor: 5, pantsColor: 5, hair: 'short', beard: 'full', glasses: 'none', vest: 'none', scarf: 'none', headwear: 'ghutra', gear: 'medic', gloves: false, boots: 'tan', patch: 'medic' } },
+  { id: 'muhandisa',ar: 'مهندسة', role: 'المهندسة',     look: { hero: 'engineer', sex: 'f', skin: 2, hair: 'ponytail', hairColor: 2, beard: 'none', glasses: 'none', top: 'jacket', topColor: 2, pantsColor: 2, vest: 'harness', vestColor: 4, scarf: 'none', headwear: 'headset', gear: 'drone', patch: 'jo', build: 'slim' } },
+  { id: 'dir3',     ar: 'درع',    role: 'الثقيل',       look: { hero: 'heavy', build: 'heavy', top: 'armor', topColor: 2, pantsColor: 2, pantsPattern: 'camo', vest: 'plate', vestColor: 3, headwear: 'heavy_helmet', glasses: 'none', scarf: 'none', beard: 'stubble', gear: 'radio' } },
   { id: 'shabah',   ar: 'شبح',   role: 'عمليات خاصة',  look: { top: 'hoodie', patch: 'crown', scarf: 'none', hair: 'short' } },
   { id: 'safir',    ar: 'سفير',  role: 'تكتيكي',       look: { top: 'suit', vest: 'harness', scarf: 'none', hair: 'short', beard: 'stubble' } },
   { id: 'rassad',   ar: 'رصّاد', role: 'استطلاع',      look: { top: 'fur', topColor: 8, topPattern: 'camo', glasses: 'none', vest: 'harness', vestColor: 8 } },
@@ -80,5 +83,6 @@ export function randomLook(rng = Math.random) {
     vest: pick(o.vest)[0], vestColor: pick([0, 1, 2, 3, 4, 5, 8]), pantsColor: pick([0, 1, 2, 3, 4, 6, 7, 11]), pantsPattern: pick(o.pantsPattern)[0],
     scarf: rng() < 0.4 ? pick(o.scarf)[0] : 'none', gloves: rng() < 0.6, patch: rng() < 0.25 ? pick(o.patch)[0] : 'none', tags: rng() < 0.2, boots: pick(o.boots)[0],
     headwear: rng() < 0.4 ? pick(o.headwear)[0] : 'none', gear: rng() < 0.2 ? pick(o.gear)[0] : 'none', watch: rng() < 0.4, patchBoth: rng() < 0.15,
+    hero: rng() < 0.75 ? pick(o.hero.slice(1))[0] : 'none',
   });
 }

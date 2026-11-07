@@ -11,3 +11,7 @@ unity/[Uu]ser[Ss]ettings/
 unity/*.csproj
 unity/*.sln
 unity/.vs/
+
+# raw Hyper3D downloads and reference art (local only)
+/assets/models/
+/assets/refs/

@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Model viewer</title>
+<style>html,body{margin:0;height:100%;background:#2a2f36;overflow:hidden}#i{position:fixed;left:8px;top:8px;color:#fff;font:12px monospace}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body><div id="i">loading…</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const q = new URLSearchParams(location.search), file = q.get('m') || 'recon', yaw = +(q.get('yaw') || 0);
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; document.body.appendChild(r.domElement);
+const s = new THREE.Scene(), cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.01, 100);
+s.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6)); const d = new THREE.DirectionalLight(0xffffff, 2.2); d.position.set(2, 4, 3); s.add(d);
+new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load('/assets/' + (q.get('dir') || 'models') + '/' + file + '.glb', g => {
+  const o = g.scene; o.updateMatrixWorld(true); o.traverse(m => { if (m.isSkinnedMesh) m.skeleton.update(); });
+  const an0 = q.get('anim'); let mx0 = null;
+  if (an0 && g.animations.length) { mx0 = new THREE.AnimationMixer(o); const clip = g.animations.find(c => c.name.toLowerCase().includes(an0.toLowerCase())) || g.animations[0]; mx0.clipAction(clip).play(); mx0.update(+(q.get('t') || 0.5)); o.updateMatrixWorld(true); o.traverse(m => { if (m.isSkinnedMesh) m.skeleton.update(); }); window.CLIP = clip.name; }
+  const box = new THREE.Box3().setFromObject(o, true), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  o.position.sub(c); o.rotation.y = yaw; s.add(o);
+  let tris = 0; o.traverse(m => { if (m.isMesh) tris += (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3; });
+  cam.position.set(0, 0, size.y * 2.1); cam.lookAt(0, 0, 0);
+  document.getElementById('i').textContent = `${file}  size ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}  tris ${tris|0}  anims ${g.animations.length}`;
+  if (window.CLIP) document.getElementById('i').textContent += '  playing ' + window.CLIP;
+  window.READY = true; r.render(s, cam);
+}, undefined, e => { document.getElementById('i').textContent = 'ERR ' + e; window.READY = true; });
+</script></body></html>

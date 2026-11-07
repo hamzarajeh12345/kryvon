@@ -3,6 +3,7 @@ import { WEAPONS, ITEMS, AMMO, ARMOR, HALF, ATTACHMENTS } from './config.js';
 import { itemById, DEFAULT_LOADOUT } from './progression.js';
 import { buildBody, buildGun } from './character.js';
 import { randomLook } from './look.js';
+import { HeroBody, heroReady } from './heroes.js';
 import { clamp } from './world.js';
 
 const GEO = {
@@ -99,6 +100,12 @@ export class Actor {
     }
     Object.assign(this, buildBody(look));
     g.add(this.torso, this.hair, this.legL, this.legR, this.armL, this.armR);
+    if (this.hero) { this.hero.dispose(); this.hero = null; }
+    if (look.hero && look.hero !== 'none' && heroReady(look.hero)) {
+      this.hero = new HeroBody(look.hero);
+      g.add(this.hero.root);
+      for (const k of ['torso', 'hair', 'legL', 'legR', 'armL', 'armR']) this[k].visible = false;
+    }
     this.refreshLook();
   }
 
@@ -120,6 +127,7 @@ export class Actor {
   freeSpace() { return this.capacity() - this.load(); }
 
   refreshLook() {
+    if (this.hero) { this.helmetMesh.visible = this.packMesh.visible = this.gunMesh.visible = false; return; }
     this.helmetMesh.visible = this.helmet.lvl > 0;
     if (this.hair) this.hair.visible = !(this.helmet.lvl > 0 && this.look && !this.look.hijab);
     if (this.helmet.lvl) this.helmetMesh.material.color.setHex(HELMET_COL[this.helmet.lvl]);
@@ -411,8 +419,10 @@ export class Actor {
       const drive = this.seat === 0;
       this.armL.rotation.set(drive ? 1.1 : 0.2, 0, drive ? -0.2 : 0); this.armR.rotation.set(drive ? 1.1 : 0.2, 0, drive ? 0.2 : 0);
       this.gunMesh.visible = false; this.chute.visible = false;
+      if (this.hero) { this.hero.play('sit'); this.animHero(dt); }
       return;
     }
+    if (this.hero) return this.updateHero(dt);
     this.gunMesh.visible = !!this.weapon;
     g.visible = true;
     g.position.copy(this.pos);
@@ -427,6 +437,28 @@ export class Actor {
     this.chute.visible = this.state === 'chute';
     if (this.state === 'fall') { g.rotation.x = -1.1; } else if (this.knocked) { g.rotation.x = -1.35; g.position.y += 0.35; } else g.rotation.x = 0;
     if (this.swimming) g.position.y -= 0.2;
+  }
+
+  // skeletal animation only near the camera; far actors freeze on their current frame
+  animHero(dt, speed = 1) {
+    const cam = this.game.camera;
+    if (!cam || this.isPlayer || cam.position.distanceToSquared(this.pos) < 160 * 160) this.hero.update(dt, speed);
+  }
+
+  updateHero(dt) {
+    const g = this.mesh, h = this.hero;
+    g.visible = true; g.position.copy(this.pos); g.rotation.set(0, this.yaw, 0);
+    this.gunMesh.visible = false; this.helmetMesh.visible = false; this.packMesh.visible = false;
+    this.chute.visible = this.state === 'chute';
+    let anim = 'idle', speed = 1;
+    if (this.knocked) anim = 'crawl', speed = this.moving ? 1 : 0;
+    else if (this.state === 'fall') { anim = 'jump'; g.rotation.x = -0.9; }
+    else if (this.state === 'chute') anim = 'idle';
+    else if (this.swimming) { anim = 'walk'; g.position.y -= 0.6; }
+    else if (!this.grounded && this.vy > 0.5) anim = 'jump';
+    else if (this.moving) anim = this.crouched ? 'crouch' : this.sprinting ? 'sprint' : 'run';
+    h.play(anim);
+    this.animHero(dt, speed);
   }
 
   eye() { return new THREE.Vector3(this.pos.x, this.pos.y + 1.62, this.pos.z); }

@@ -12,6 +12,7 @@ import { Input } from './input.js';
 import { initBot, updateBot, hearShot, distract } from './bots.js';
 import { UI } from './ui.js';
 import { buildPlaneMesh } from './plane-model.js';
+import { VehicleSystem, VEHICLES } from './vehicles.js';
 import { account, RANKS, RANKS_AR, rankOf } from './account.js';
 
 const $ = id => document.getElementById(id);
@@ -76,6 +77,8 @@ class Game {
     r.setSize(innerWidth, innerHeight);
     r.shadowMap.enabled = preset.shadows > 0;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.95;
+    r.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 2600);
     addEventListener('resize', () => { r.setSize(innerWidth, innerHeight); this.camera.aspect = innerWidth / innerHeight; this.camera.updateProjectionMatrix(); });
@@ -87,6 +90,7 @@ class Game {
     this.weatherFX = new WeatherFX(this.scene, this.weather.id);
     this.loot = new LootSystem(this);
     this.loot.spawnAll(this.world.lootSpots);
+    this.world.halfSize = HALF;
     this.ring = new Ring(this);
     this.redzone = new RedZone(this);
     this.heat = new Heatmap();
@@ -121,6 +125,12 @@ class Game {
     }
     this.aliveCount = this.total;
     this.teamsLeft = this.teamCount || 1;
+    if (map.training) {
+      const s = this.spawnPoint, yaw = 0;
+      this.vehicles = new VehicleSystem(this, { spots: [
+        { type: 'pickup', x: s.x + 9, z: s.z + 4, yaw }, { type: 'taxi', x: s.x + 14, z: s.z + 4, yaw },
+        { type: 'buggy', x: s.x + 9, z: s.z + 11, yaw }, { type: 'moto', x: s.x + 13, z: s.z + 11, yaw }, { type: 'minibus', x: s.x + 19, z: s.z + 6, yaw } ] });
+    } else this.vehicles = new VehicleSystem(this);
 
     this.time = 0; this.matchT = 0; this.shake = 0; this.bloom = 0;
     this.projectiles = []; this.drops = []; this.flares = [];
@@ -158,6 +168,7 @@ class Game {
     const m = this.map, full = m.radius >= 1000;
     this.phase = 'match'; this.noDamage = false;
     this.plane = full ? new Plane(this) : new Plane(this, 300, 80, { x: m.cx, z: m.cz }, m.radius * 2 + 320);
+    this.vehicles.ejectAll();
     for (const a of this.actors) { a.pos.copy(this.plane.pos); a.state = 'plane'; a.hp = 100; a.action = null; a.vy = 0; }
     this.planBotJumps();
     this.camYaw = Math.atan2(-this.plane.dir.x, -this.plane.dir.z); this.camPitch = -0.25;
@@ -195,6 +206,26 @@ class Game {
     if (v.team === 0 && by !== this.player) this.teamChat(by, `قوم يا ${v.name}، ما تخاف!`);
   }
   tagName(a) { return a ? (a.team === 0 ? `<span class="${a.isPlayer ? 'me' : 'mate'}">${a.name}</span>` : a.name) : '?'; }
+
+  // ---------- squad mates in vehicles ----------
+  mateBoard(v) {
+    for (const m of this.mates(this.player)) {
+      if (!m.alive || m.knocked || m.state !== 'ground' || Math.hypot(m.pos.x - v.pos.x, m.pos.z - v.pos.z) > 14) continue;
+      if (this.vehicles.enter(m, v, false)) this.teamChat(m, 'ركبت!');
+    }
+  }
+  mateExit(v) { for (const m of this.mates(this.player)) if (m.vehicle === v) this.vehicles.exit(m); }
+  updateMates() {
+    const p = this.player;
+    if (p.state !== 'vehicle' || !p.vehicle) return;
+    // mates walking up to your car hop in when they reach it
+    for (const m of this.mates(p)) {
+      if (!m.alive || m.knocked || m.state !== 'ground' || !m.ai) continue;
+      const d = Math.hypot(m.pos.x - p.vehicle.pos.x, m.pos.z - p.vehicle.pos.z);
+      if (d < 4 && p.vehicle.seats.some(s => !s)) this.vehicles.enter(m, p.vehicle, false);
+      else if (d < 40) { m.ai.order = { x: p.vehicle.pos.x, z: p.vehicle.pos.z }; m.ai.orderT = this.time + 2; }
+    }
+  }
 
   // ---------- quick chat & pings ----------
   teamChat(from, text) {
@@ -361,6 +392,29 @@ class Game {
       sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.4;
     }
     this.scene.add(sun); this.scene.add(sun.target);
+
+    // sun disc and drifting clouds (sprites, cheap)
+    const disc = document.createElement('canvas'); disc.width = disc.height = 128;
+    const dg = disc.getContext('2d'), gr = dg.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(255,250,235,1)'); gr.addColorStop(0.18, 'rgba(255,240,200,0.95)'); gr.addColorStop(0.4, 'rgba(255,220,160,0.25)'); gr.addColorStop(1, 'rgba(255,220,160,0)');
+    dg.fillStyle = gr; dg.fillRect(0, 0, 128, 128);
+    this.sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(disc), fog: false, depthWrite: false, transparent: true, color: W.sun }));
+    this.sunSprite.scale.setScalar(260); this.scene.add(this.sunSprite);
+    const cc = document.createElement('canvas'); cc.width = 256; cc.height = 128;
+    const cg = cc.getContext('2d');
+    for (let i = 0; i < 18; i++) {
+      const x = 40 + Math.random() * 176, y = 50 + Math.random() * 40, r = 18 + Math.random() * 34, g2 = cg.createRadialGradient(x, y, 0, x, y, r);
+      g2.addColorStop(0, 'rgba(255,255,255,0.85)'); g2.addColorStop(1, 'rgba(255,255,255,0)'); cg.fillStyle = g2; cg.fillRect(0, 0, 256, 128);
+    }
+    const cloudTex = new THREE.CanvasTexture(cc);
+    const cloudy = { clear: 26, sunset: 22, fog: 10, rain: 40, snow: 36, khamaseen: 8 }[this.weather.id] || 20;
+    this.clouds = [];
+    for (let i = 0; i < cloudy; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, fog: false, depthWrite: false, transparent: true, opacity: 0.55 + Math.random() * 0.35, color: this.weather.id === 'rain' ? 0x8a929a : 0xffffff }));
+      s.position.set((Math.random() * 2 - 1) * 1300, 240 + Math.random() * 160, (Math.random() * 2 - 1) * 1300);
+      s.scale.set(260 + Math.random() * 260, 110 + Math.random() * 90, 1);
+      this.scene.add(s); this.clouds.push(s);
+    }
   }
 
   bindHudButtons() {
@@ -431,6 +485,8 @@ class Game {
       this.updateIsland(dt);
       this.updatePlayer(dt);
       this.player.tickStatus(dt); this.player.updateMesh(dt);
+      this.vehicles.update(dt, this.vehicleCtrl || {});
+      for (const a of this.actors) if (a.vehicle) a.updateMesh(dt);
       this.effects.update(dt); this.weatherFX.update(dt, this.camera);
       this.updateCamera(dt); this.updatePings(); this.hud.update(dt);
       return;
@@ -445,6 +501,8 @@ class Game {
       if (!this.plane.active) for (const a of this.actors) if (a.state === 'plane') this.jump(a);
     }
     this.updatePlayer(dt);
+    this.vehicles.update(dt, this.vehicleCtrl || {});
+    this.updateMates();
     for (const a of this.actors) {
       if (!a.alive) continue;
       if (!a.isPlayer) {
@@ -459,13 +517,13 @@ class Game {
           else updateBot(this, a, dt);
         }
       }
-      if (a.state === 'ground') a.tickStatus(dt);
+      if (a.state === 'ground' || a.state === 'vehicle') a.tickStatus(dt);
       a.updateMesh(dt);
     }
     // Al-Tawq damage (ignores armor)
     this.ring.update(dt);
     const dps = this.ring.dps;
-    for (const a of this.actors) if (a.alive && a.state === 'ground' && !this.ring.inside(a.pos.x, a.pos.z)) a.takeDamage(dps * dt, 'body', null, 'Al-Tawq', true);
+    for (const a of this.actors) if (a.alive && (a.state === 'ground' || a.state === 'vehicle') && !this.ring.inside(a.pos.x, a.pos.z)) a.takeDamage(dps * dt, 'body', null, 'Al-Tawq', true);
     if (!this.map.training) this.redzone.update(dt);
     this.heat.update(dt, this.time);
     if (!this.map.training) this.updateAirdrops(dt);
@@ -486,6 +544,7 @@ class Game {
     const zoom = this.scoped ? p.weapon.zoom : 1, sv = this.settings.sens;
     let pct = sv.camera;
     if (p.state === 'plane' || p.state === 'fall' || p.state === 'chute') pct = sv.para;
+    else if (p.state === 'vehicle') pct = sv.vehicle ?? sv.camera;
     else if (this.scoped) pct = zoom >= 8 ? sv.x8 : zoom >= 4 ? sv.x4 : sv.x2;
     else if (this.aiming) pct = p.weapon && p.weapon.zoom === 1.3 ? sv.reddot : sv.ads;
     const k = 0.0022 * pct / 100 / zoom, inv = sv.invertY ? -1 : 1;
@@ -501,6 +560,15 @@ class Game {
     if (p.state === 'fall' || p.state === 'chute') {
       this.updateAir(p, dt, mx, mz, inp.hit('Space'));
       if (p.state === 'fall') this.prompt = `<b>SPACE</b> Open parachute · ${Math.round(p.pos.y - this.world.getHeight(p.pos.x, p.pos.z))} m`;
+      return;
+    }
+    this.vehicleCtrl = null;
+    if (p.state === 'vehicle') {
+      const v = p.vehicle;
+      if (p.seat === 0) this.vehicleCtrl = { throttle: ax.y, steer: ax.x, brake: inp.down('Space'), boost: inp.sprint() };
+      this.prompt = `<b>F</b> نزول · ${VEHICLES[v.type].ar}${p.seat === 0 ? '' : ' (راكب)'}`;
+      if (inp.hit('KeyF')) { this.vehicles.exit(p); this.mateExit(v); this.audio.stopEngine(); }
+      if (inp.hit('KeyM') && false) this.toggleMap();
       return;
     }
     if (p.state !== 'ground') return;
@@ -531,6 +599,10 @@ class Game {
     if (w && w.mag <= 0 && !p.action && this.settings.controls.autoReload && p.ammo[w.def.ammo] > 0) p.startReload();
     if (this.phase === 'island') { this.prompt = `الطيارة بتقلع بعد <b>${Math.ceil(this.island.t)}</b> ثانية`; return; }
     if (this.settings.controls.autoPickup) this.autoPickup(p);
+    // get into a vehicle
+    const car = !p.knocked && this.vehicles.near(p.pos.x, p.pos.z, 2.2);
+    if (car && !this.prompt) this.prompt = `<b>F</b> ركوب ${VEHICLES[car.type].ar}`;
+    if (car && inp.hit('KeyF')) { this.vehicles.enter(p, car); this.audio.startEngine(); this.mateBoard(car); this.camYaw = car.yaw; return; }
     // revive a knocked teammate
     const down = this.mates(p).find(m => m.alive && m.knocked && Math.hypot(m.pos.x - p.pos.x, m.pos.z - p.pos.z) < 2.2);
     if (down) {
@@ -539,7 +611,7 @@ class Game {
       if (inp.hit('KeyE')) { p.action = { type: 'revive', target: down, t: 7, total: 7 }; }
       return;
     }
-    if (this.map.training && inp.hit('KeyF')) { this.restockTraining(); this.toast('تم تعبئة الرف'); }
+    if (this.map.training && inp.hit('KeyU')) { this.restockTraining(); this.toast('تم تعبئة الرف'); }
     if (inp.fire && w) {
       if (w.mag <= 0) { if (!this.dryClick) { this.audio.ui('click'); this.dryClick = true; } p.startReload(); }
       else if (p.canFire() && (w.def.auto || !this.firedHeld)) { this.playerFire(); this.firedHeld = true; }
@@ -632,10 +704,12 @@ class Game {
       const o = new THREE.Vector3(origin.x, origin.y, origin.z).addScaledVector(d, tStart);
       const maxD = def.range;
       let ht = this.world.raycast(o.x, o.y, o.z, d.x, d.y, d.z, maxD, 2);
-      let hitA = null, part = null;
+      let hitA = null, part = null, hitV = null;
+      const vh = this.vehicles.rayHit(o, d, Math.min(ht, maxD));
+      if (vh) { ht = vh.t; hitV = vh.v; }
       const lim = Math.min(ht, maxD);
       for (const a of this.actors) {
-        if (a === s || !a.alive || a.state === 'plane' || (a.team === s.team && this.teamSize > 1)) continue;
+        if (a === s || !a.alive || a.state === 'plane' || (a.team === s.team && this.teamSize > 1) || (s.vehicle && a.vehicle === s.vehicle)) continue;
         const ex = a.pos.x - o.x, ez = a.pos.z - o.z;
         if (Math.abs(ex) > lim + 2 || Math.abs(ez) > lim + 2) continue;
         const r = rayActor(o.x, o.y, o.z, d.x, d.y, d.z, a, Math.min(ht, maxD));
@@ -647,7 +721,8 @@ class Game {
         const dmg = def.dmg * (part === 'head' ? (def.head || 2.1) : 1) * fall;
         if (dCam < 350) this.effects.impact(end, true);
         hitA.takeDamage(dmg, part, s, def.name);
-      } else if (ht < maxD && dCam < 250) this.effects.impact(end, false);
+      } else if (hitV && hitV.driver !== s) { hitV.damage(def.dmg * 0.55, s); if (dCam < 300) this.effects.impact(end, false); }
+      else if (ht < maxD && dCam < 250) this.effects.impact(end, false);
       if (dCam < 400 && (i === 0 || pellets < 4 || i % 3 === 0) && !(suppressed(w) && s !== this.player)) this.effects.tracer(muzzle, end, def.exclusive ? 0xffb020 : 0xffe08a);
     }
     const quiet = suppressed(w);
@@ -671,7 +746,7 @@ class Game {
     this.audio.explosion(d0, this.pan(pos));
     if (d0 < radius * 4) this.shake = Math.max(this.shake, 0.6 * (1 - d0 / (radius * 4)));
     for (const a of this.actors) {
-      if (!a.alive || a.state !== 'ground') continue;
+      if (!a.alive || (a.state !== 'ground' && a.state !== 'vehicle')) continue;
       if (attacker && a !== attacker && a.team === attacker.team && this.teamSize > 1) continue;
       const d = Math.hypot(a.pos.x - x, a.pos.y + 1 - y, a.pos.z - z);
       if (d > radius) continue;
@@ -680,6 +755,7 @@ class Game {
       if (dl > 0.5 && this.world.raycast(x, y + 0.6, z, e.x / dl, e.y / dl, e.z / dl, dl - 0.4, 1) !== Infinity) continue;
       a.takeDamage(dmg * Math.pow(1 - d / radius, 0.6), 'body', attacker, cause);
     }
+    if (this.vehicles) this.vehicles.blast(x, y, z, radius, dmg, attacker);
     if (attacker) this.heat.add(x, z, 3, this.time);
   }
 
@@ -840,6 +916,7 @@ class Game {
       if (v.armored) { v.helmet = { lvl: 2, dur: ARMOR.helmet.dur[2] }; v.vest = { lvl: 2, dur: ARMOR.vest.dur[2] }; v.refreshLook(); }
       return;
     }
+    if (v.vehicle) { v.vehicle.seats[v.seat] = null; v.vehicle = null; if (v === this.player) this.audio.stopEngine(); }
     v.alive = false; v.state = 'dead'; v.mesh.visible = false; v.knocked = false; v.action = null;
     this.aliveCount--;
     v.place = this.aliveCount + 1;
@@ -902,6 +979,16 @@ class Game {
       if (m && this.spectating) { pivot = m.eye(); dist = 4; this.camYaw += ((m.yaw - this.camYaw + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 3); }
       else { pivot = p.pos.clone().add(new THREE.Vector3(0, 2, 0)); dist = 14; this.camYaw += dt * 0.15; }
     }
+    else if (p.state === 'vehicle' && p.vehicle) {
+      const v = p.vehicle, d = VEHICLES[v.type];
+      pivot = v.pos.clone().add(new THREE.Vector3(0, d.camH, 0)); dist = d.cam + Math.abs(v.speed) * 0.08; fov = baseFov + Math.min(10, Math.abs(v.speed) * 0.3);
+      if (Math.abs(this.input.mdx) < 0.5 && Math.abs(v.speed) > 4) { // drift back behind the car when you are not looking around
+        const back = v.speed >= 0 ? v.yaw : v.yaw + Math.PI;
+        this.camYaw += (((back - this.camYaw) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 1.6);
+        this.camPitch += (-0.22 - this.camPitch) * Math.min(1, dt * 2);
+      }
+      this.audio.setEngine(Math.abs(v.speed) / d.maxSpeed);
+    }
     else if (p.knocked) { pivot = p.pos.clone().add(new THREE.Vector3(0, 0.9, 0)); dist = 3.4; shoulder = 0.3; }
     else if (p.state === 'fall' || p.state === 'chute') { pivot = p.pos.clone().add(new THREE.Vector3(0, 1.5, 0)); dist = 9; }
     else if (this.scoped) { pivot = p.eye(); dist = 0; fov = 70 / p.weapon.zoom; }
@@ -925,6 +1012,8 @@ class Game {
     const c = p.state === 'plane' && this.plane ? this.plane.pos : p.pos;
     this.sun.position.copy(c).add(this.sunOff); this.sun.target.position.copy(c);
     this.skyMesh.position.copy(cam.position);
+    if (this.sunSprite) this.sunSprite.position.copy(cam.position).addScaledVector(this.sunOff.clone().normalize(), 1900);
+    if (this.clouds) for (const c of this.clouds) { c.position.x += dt * 3; if (c.position.x > 1400) c.position.x = -1400; }
   }
 
   updateZoneName() {

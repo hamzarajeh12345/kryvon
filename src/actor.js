@@ -383,6 +383,7 @@ export class Actor {
       }
     }
     w.collideCircle(p, 0.38, p.y + 0.35, p.y + 1.85);
+    if (this.game.vehicles) this.game.vehicles.pushOut(p, 0.38);
     p.x = clamp(p.x, -HALF + 2, HALF - 2); p.z = clamp(p.z, -HALF + 2, HALF - 2);
     const g = w.getHeight(p.x, p.z), lvl = w.waterLevel(p.x, p.z);
     this.swimming = g < lvl - 1.2;
@@ -403,6 +404,16 @@ export class Actor {
   updateMesh(dt) {
     const g = this.mesh;
     if (this.state === 'plane' || this.state === 'dead') { g.visible = false; return; }
+    if (this.state === 'vehicle') {
+      g.visible = this.vehicle && this.vehicle.type !== 'minibus' && this.vehicle.type !== 'taxi' || this.seat === 0 || true;
+      g.position.copy(this.pos); g.rotation.set(0, this.yaw, 0);
+      this.legL.rotation.set(1.45, 0, 0.08); this.legR.rotation.set(1.45, 0, -0.08);
+      const drive = this.seat === 0;
+      this.armL.rotation.set(drive ? 1.1 : 0.2, 0, drive ? -0.2 : 0); this.armR.rotation.set(drive ? 1.1 : 0.2, 0, drive ? 0.2 : 0);
+      this.gunMesh.visible = false; this.chute.visible = false;
+      return;
+    }
+    this.gunMesh.visible = !!this.weapon;
     g.visible = true;
     g.position.copy(this.pos);
     g.rotation.y = this.yaw;

@@ -64,6 +64,28 @@ export class Audio {
     else if (kind === 'click') this.tone(300, 0.03, 0.1, 'square');
     else if (kind === 'jump') this.burst(0.4, 1.2, 900, 0.5);
   }
+  startEngine() {
+    if (!this.ctx || this.engine) return;
+    const o = this.ctx.createOscillator(), o2 = this.ctx.createOscillator(), f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
+    o.type = 'sawtooth'; o2.type = 'square'; o.frequency.value = 45; o2.frequency.value = 22.5;
+    f.type = 'lowpass'; f.frequency.value = 420; g.gain.value = 0.0001;
+    o.connect(f); o2.connect(f); f.connect(g); g.connect(this.sfxBus || this.master);
+    o.start(); o2.start();
+    g.gain.setTargetAtTime(0.06, this.ctx.currentTime, 0.2);
+    this.engine = { o, o2, f, g };
+  }
+  setEngine(r) {
+    if (!this.engine) return;
+    const t = this.ctx.currentTime, e = this.engine;
+    e.o.frequency.setTargetAtTime(45 + r * 110, t, 0.08); e.o2.frequency.setTargetAtTime(22 + r * 55, t, 0.08);
+    e.f.frequency.setTargetAtTime(380 + r * 900, t, 0.1); e.g.gain.setTargetAtTime(0.05 + r * 0.06, t, 0.1);
+  }
+  stopEngine() {
+    if (!this.engine) return;
+    const e = this.engine; this.engine = null;
+    e.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.15);
+    setTimeout(() => { try { e.o.stop(); e.o2.stop(); } catch { } }, 600);
+  }
   siren(dist) { // air-raid siren
     if (!this.ctx) return;
     const t = this.ctx.currentTime, o = this.ctx.createOscillator(), g = this.out(0);

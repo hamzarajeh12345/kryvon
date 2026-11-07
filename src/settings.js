@@ -4,13 +4,13 @@ export const ACTIONS = [
   ['KeyW', 'تقدّم'], ['KeyS', 'رجوع'], ['KeyA', 'يسار'], ['KeyD', 'يمين'], ['ShiftLeft', 'ركض'], ['Space', 'قفز / مظلة'],
   ['KeyE', 'التقاط / فتح صندوق'], ['KeyR', 'تعبئة'], ['Digit1', 'السلاح 1'], ['Digit2', 'السلاح 2'], ['KeyX', 'تبديل السلاح'],
   ['KeyH', 'علاج'], ['KeyB', 'منشّط'], ['KeyG', 'رمي'], ['KeyT', 'تبديل المرمى'], ['KeyM', 'الخريطة'], ['KeyQ', 'عين سارة'],
-  ['KeyI', 'الحقيبة'], ['KeyZ', 'رسائل سريعة'], ['KeyV', 'علامة (Ping)'],
+  ['KeyF', 'ركوب / نزول السيارة'], ['KeyI', 'الحقيبة'], ['KeyZ', 'رسائل سريعة'], ['KeyV', 'علامة (Ping)'],
 ];
 
 export const DEFAULTS = {
   graphics: { preset: '', fps: 60, fov: 80, brightness: 100, view: 100, shadows: true, showFps: false },
   sens: {
-    camera: 100, ads: 100, reddot: 100, x2: 100, x4: 100, x8: 100, para: 100, // % of base
+    camera: 100, ads: 100, reddot: 100, x2: 100, x4: 100, x8: 100, para: 100, vehicle: 100, // % of base
     touch: 100, invertY: false, gyro: 'off', gyroSens: 100,
   },
   controls: {
@@ -33,6 +33,7 @@ export const SCHEMA = [
   ['sens', '#', 'حساسية الكاميرا', 'header'],
   ['sens', 'sens.camera', 'الكاميرا (منظور ثالث)', 'range', { min: 10, max: 300, step: 1, unit: '%' }],
   ['sens', 'sens.para', 'الطيارة والمظلة', 'range', { min: 10, max: 300, step: 1, unit: '%' }],
+  ['sens', 'sens.vehicle', 'السيارة', 'range', { min: 10, max: 300, step: 1, unit: '%' }],
   ['sens', '#', 'حساسية التصويب (ADS)', 'header'],
   ['sens', 'sens.ads', 'بدون سكوب', 'range', { min: 10, max: 300, step: 1, unit: '%' }],
   ['sens', 'sens.reddot', 'ريد دوت', 'range', { min: 10, max: 300, step: 1, unit: '%' }],

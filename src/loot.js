@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { WEAPONS, ITEMS, AMMO, ARMOR, RARITY_COLORS, HALF, ATTACHMENTS } from './config.js';
 import { itemRarity } from './actor.js';
+import { buildGun, prep, M4, BODY_MAT } from './character.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const pickW = (pairs) => { // [[value, weight], ...]
   let s = 0; for (const p of pairs) s += p[1];
@@ -64,7 +66,48 @@ export function airdropItems(flare) {
   return out;
 }
 
-const LOOT_GEO = new THREE.BoxGeometry(0.55, 0.32, 0.55);
+// ---------- item models (lying on the ground) ----------
+const M = (parts) => mergeGeometries(parts, false);
+const bx = (w, h, d, c, x = 0, y = 0, z = 0, rx = 0, ry = 0) => prep(new THREE.BoxGeometry(w, h, d), c, null, M4(x, y, z, rx, ry));
+const cy = (r, h, c, x = 0, y = 0, z = 0, rx = 0, rz = 0) => prep(new THREE.CylinderGeometry(r, r, h, 12), c, null, M4(x, y, z, rx, 0, rz));
+const MODELS = {};
+function model(key) {
+  if (MODELS[key]) return MODELS[key];
+  let g;
+  if (key.startsWith('w:')) { g = buildGun(key.slice(2)).clone(); g.rotateZ(Math.PI / 2); g.translate(0, 0.06, 0); g.scale(1.15, 1.15, 1.15); }
+  else switch (key) {
+    case 'ammo':   g = M([bx(0.36, 0.2, 0.22, 0x4a5a3a, 0, 0.1), bx(0.37, 0.04, 0.23, 0x2a2a2a, 0, 0.18), bx(0.1, 0.05, 0.01, 0xd9c060, 0, 0.12, -0.115)]); break;
+    case 'heal':   g = M([bx(0.36, 0.2, 0.26, 0xf0ece4, 0, 0.1), bx(0.16, 0.04, 0.012, 0xd23b3b, 0, 0.12, -0.132), bx(0.045, 0.14, 0.012, 0xd23b3b, 0, 0.12, -0.132), bx(0.12, 0.04, 0.04, 0x333333, 0, 0.22)]); break;
+    case 'boost':  g = M([cy(0.07, 0.24, 0x2f9e5b, 0, 0.12), cy(0.072, 0.07, 0xeeeeee, 0, 0.12), cy(0.05, 0.03, 0xb8bcc0, 0, 0.255)]); break;
+    case 'syringe':g = M([cy(0.03, 0.26, 0xdde8f0, 0, 0.04, 0, 0, Math.PI / 2), cy(0.008, 0.1, 0xb8bcc0, 0.18, 0.04, 0, 0, Math.PI / 2), cy(0.02, 0.06, 0x2f6fae, -0.15, 0.04, 0, 0, Math.PI / 2)]); break;
+    case 'helmet': g = M([prep(new THREE.SphereGeometry(0.2, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0x3a4033, null, M4(0, 0.02, 0)), cy(0.21, 0.03, 0x2a2e26, 0, 0.02)]); break;
+    case 'vest':   g = M([bx(0.48, 0.12, 0.56, 0x3a4033, 0, 0.06), bx(0.14, 0.07, 0.1, 0x2c3127, -0.13, 0.15, -0.15), bx(0.14, 0.07, 0.1, 0x2c3127, 0.13, 0.15, -0.15), bx(0.14, 0.07, 0.1, 0x2c3127, 0, 0.15, 0.05)]); break;
+    case 'pack':   g = M([bx(0.42, 0.24, 0.5, 0x6a5a3a, 0, 0.12), bx(0.3, 0.12, 0.08, 0x5a4a30, 0, 0.12, -0.28), bx(0.44, 0.08, 0.2, 0x7a6a48, 0, 0.27, 0.12)]); break;
+    case 'scope':  g = M([cy(0.04, 0.3, 0x2a2a2a, 0, 0.05, 0, Math.PI / 2), cy(0.055, 0.05, 0x333333, 0, 0.05, -0.15, Math.PI / 2), cy(0.05, 0.05, 0x333333, 0, 0.05, 0.15, Math.PI / 2)]); break;
+    case 'attach': g = M([cy(0.035, 0.22, 0x444444, 0, 0.04, 0, Math.PI / 2), cy(0.04, 0.04, 0x222222, 0, 0.04, -0.1, Math.PI / 2)]); break;
+    case 'frag':   g = M([prep(new THREE.SphereGeometry(0.07, 10, 8), 0x3a4a2a, null, M4(0, 0.07)), bx(0.03, 0.05, 0.03, 0x888888, 0, 0.15)]); break;
+    case 'slipper':g = M([bx(0.12, 0.03, 0.28, 0x2a6fd8, 0, 0.02), bx(0.1, 0.03, 0.02, 0x2a6fd8, 0, 0.05, -0.04)]); break;
+    case 'flare':  g = M([cy(0.04, 0.24, 0xd02020, 0, 0.04, 0, Math.PI / 2), bx(0.04, 0.1, 0.04, 0x222222, 0, 0.0, 0.06)]); break;
+    default:       g = bx(0.3, 0.2, 0.3, 0x888888, 0, 0.1);
+  }
+  return MODELS[key] = g;
+}
+function modelKey(it) {
+  switch (it.kind) {
+    case 'weapon': return 'w:' + WEAPONS[it.key].cls;
+    case 'item': return ITEMS[it.key].kind === 'heal' ? 'heal' : it.key === 'syringe' ? 'syringe' : ITEMS[it.key].kind === 'boost' ? 'boost' : it.key;
+    default: return it.kind;
+  }
+}
+// soft rarity glow under each item
+const GLOW_TEX = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+const GLOW_GEO = new THREE.PlaneGeometry(1.1, 1.1).rotateX(-Math.PI / 2);
 
 export class LootSystem {
   constructor(game) {
@@ -83,26 +126,38 @@ export class LootSystem {
       its.forEach((it, i) => list.push({ it, x: s.x + i * 0.7, y: s.y, z: s.z + i * 0.3 }));
     }
     this.capacity = list.length + 800;
-    this.mesh = new THREE.InstancedMesh(LOOT_GEO, new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x222222 }), this.capacity);
-    this.mesh.count = 0;
-    this.mesh.castShadow = true;
-    this.game.scene.add(this.mesh);
+    this.meshes = new Map();
+    this.glow = new THREE.InstancedMesh(GLOW_GEO, new THREE.MeshBasicMaterial({ map: GLOW_TEX, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }), this.capacity);
+    this.glow.count = 0; this.glow.frustumCulled = false;
+    this.game.scene.add(this.glow);
     for (const l of list) this.add(l.it, l.x, l.y, l.z);
-    this.mesh.instanceMatrix.needsUpdate = true;
   }
 
   key(x, z) { return Math.floor((x + HALF) / 20) * 4096 + Math.floor((z + HALF) / 20); }
 
+  meshFor(key) {
+    let m = this.meshes.get(key);
+    if (!m) {
+      m = new THREE.InstancedMesh(model(key), BODY_MAT, key.startsWith('w:') ? 900 : 700);
+      m.count = 0; m.castShadow = true; m.frustumCulled = false; m.free = [];
+      this.meshes.set(key, m); this.game.scene.add(m);
+    }
+    return m;
+  }
+
   add(it, x, y, z) {
-    if (this.mesh.count >= this.capacity) return null;
-    const idx = this.mesh.count++;
-    const e = { it, x, y, z, idx, alive: true, rar: itemRarity(it) };
+    if (this.glow.count >= this.capacity) return null;
+    const key = modelKey(it), mesh = this.meshFor(key);
+    const idx = mesh.free.length ? mesh.free.pop() : (mesh.count < mesh.instanceMatrix.count ? mesh.count++ : -1);
+    if (idx < 0) return null;
+    const gIdx = this.glow.count++;
+    const e = { it, x, y, z, idx, mesh, gIdx, alive: true, rar: itemRarity(it) };
     this.items.push(e);
-    const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y + 0.16, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random() * 3, 0)), new THREE.Vector3(1, 1, 1));
-    this.mesh.setMatrixAt(idx, m);
-    this.mesh.setColorAt(idx, new THREE.Color(RARITY_COLORS[e.rar]));
-    this.mesh.instanceMatrix.needsUpdate = true;
-    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y + 0.02, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random() * 6.28, 0)), new THREE.Vector3(1, 1, 1));
+    mesh.setMatrixAt(idx, m); mesh.instanceMatrix.needsUpdate = true;
+    const gm = new THREE.Matrix4().makeTranslation(x, y + 0.03, z);
+    this.glow.setMatrixAt(gIdx, gm); this.glow.setColorAt(gIdx, new THREE.Color(RARITY_COLORS[e.rar]).multiplyScalar(e.rar >= 3 ? 0.9 : 0.55));
+    this.glow.instanceMatrix.needsUpdate = true; if (this.glow.instanceColor) this.glow.instanceColor.needsUpdate = true;
     const k = this.key(x, z);
     let a = this.grid.get(k); if (!a) this.grid.set(k, a = []);
     a.push(e);
@@ -117,8 +172,9 @@ export class LootSystem {
 
   remove(e) {
     e.alive = false;
-    this.mesh.setMatrixAt(e.idx, new THREE.Matrix4().makeScale(0, 0, 0));
-    this.mesh.instanceMatrix.needsUpdate = true;
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    e.mesh.setMatrixAt(e.idx, zero); e.mesh.instanceMatrix.needsUpdate = true; e.mesh.free.push(e.idx);
+    this.glow.setMatrixAt(e.gIdx, zero); this.glow.instanceMatrix.needsUpdate = true;
   }
 
   near(x, z, r, filter) {

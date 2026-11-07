@@ -9,7 +9,7 @@ export const BODY_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
 const C = new THREE.Color(), C2 = new THREE.Color();
 
 // ---------- geometry helpers ----------
-function prep(geo, color, pattern, m) {
+export function prep(geo, color, pattern, m) {
   let g = geo.index ? geo.toNonIndexed() : geo.clone();
   for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
   if (!g.attributes.normal) g.computeVertexNormals();
@@ -25,7 +25,7 @@ function prep(geo, color, pattern, m) {
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return g;
 }
-const M4 = (x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) =>
+export const M4 = (x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) =>
   new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz));
 const hash = (a, b, c) => { const s = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453; return s - Math.floor(s); };
 

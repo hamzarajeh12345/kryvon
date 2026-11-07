@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { HALF, GRID_N, CELL, ZONES, VILLAGES, MAP_SEED, STYLES, ROADS } from './config.js';
 import { buildLandmarks } from './landmarks.js';
+import { buildStreets, buildRoadMesh } from './streets.js';
 
 // ---------- math / noise ----------
 export function mulberry32(a) {
@@ -64,6 +65,24 @@ export function naturalHeight(x, z) {
 
 export const ALL_ZONES = [...ZONES, ...VILLAGES];
 
+// ---------- surface detail texture (multiplied over vertex colours) ----------
+export const DETAIL = (() => {
+  if (typeof document === 'undefined') return null;
+  const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d'), img = g.createImageData(S, S);
+  for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
+    // tileable value noise: sample on a torus
+    const u = i / S * Math.PI * 2, v = j / S * Math.PI * 2;
+    const n = fbm(Math.cos(u) * 6 + 20, Math.sin(u) * 6 + Math.cos(v) * 6, 91, 4) * 0.7 + fbm(Math.sin(v) * 14, Math.cos(u) * 14 + 7, 17, 2) * 0.3;
+    const k = (0.8 + n * 0.22 + (Math.random() - 0.5) * 0.05) * 255;
+    const o = (j * S + i) * 4; img.data[o] = img.data[o + 1] = img.data[o + 2] = Math.min(255, k); img.data[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+})();
+
 // ---------- World ----------
 export class World {
   constructor(scene, preset) {
@@ -77,6 +96,7 @@ export class World {
     this.boxes = [];
     this.cyls = [];
     this.landmarks = [];
+    this.streets = [];
     this.matCache = new Map();
     this.stamp = 0;
     this.flat = ALL_ZONES.filter(z => z.fr > 0).map(z => ({ x: z.x, z: z.z, fr: z.fr, fh: Math.max(3, naturalHeight(z.x, z.z)) }));
@@ -86,6 +106,7 @@ export class World {
     this.buildWater();
     const rng = mulberry32(MAP_SEED);
     this.buildStructures(rng);
+    this.roadMesh = buildRoadMesh(this);
     this.buildRocks(rng);
     this.buildTrees(rng, preset);
     this.buildBoxMesh();
@@ -133,7 +154,7 @@ export class World {
         const t = i / n, w = (fbm(t * 3 + ri * 1.7, ri * 0.9, 77, 3) - 0.5) * 0.22 * len * Math.sin(Math.PI * t);
         pts.push([A.x + (B.x - A.x) * t + px * w, A.z + (B.z - A.z) * t + pz * w]);
       }
-      this.roadLines.push(pts);
+      this.roadLines.push({ pts, major: !A.minor && !B.minor });
       for (let i = 0; i < pts.length - 1; i++) {
         const [x0, z0] = pts[i], [x1, z1] = pts[i + 1], sl = Math.hypot(x1 - x0, z1 - z0), steps = Math.ceil(sl / 2);
         for (let k = 0; k <= steps; k++) {
@@ -206,7 +227,9 @@ export class World {
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+    const tex = DETAIL ? DETAIL.clone() : null;
+    if (tex) { tex.needsUpdate = true; tex.repeat.set(220, 220); }
+    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, map: tex }));
     mesh.receiveShadow = true;
     this.scene.add(mesh);
     this.terrain = mesh;
@@ -348,12 +371,78 @@ export class World {
     // low parapet – flat Levantine roofs
     this.addBox(x, top + 0.5, minZ + 0.1, w, 0.5, 0.2, color, false);
     this.addBox(x, top + 0.5, maxZ - 0.1, w, 0.5, 0.2, color, false);
+    this.addBox(minX + 0.1, top + 0.5, z, 0.2, 0.5, d, color, false);
+    this.addBox(maxX - 0.1, top + 0.5, z, 0.2, 0.5, d, color, false);
+    this.decorateBuilding({ x, z, w, d, minX, maxX, minZ, maxZ, base, top, h, color, st, type, zone, doorSide, sides }, rng);
     const b = { minX, maxX, minZ, maxZ, base, top, type, zone };
     this.buildings.push(b);
     const nLoot = { 1: 1 + (rng() < 0.6 ? 1 : 0), 2: 2 + (rng() < 0.5 ? 1 : 0), 3: 3 + (rng() < 0.6 ? 1 : 0) }[zone.tier] + (w * d > 110 ? 1 : 0);
     for (let k = 0; k < nLoot; k++) {
       const lx = lerp(minX + 1.1, maxX - 1.1, rng()), lz = lerp(minZ + 1.1, maxZ - 1.1, rng());
       this.lootSpots.push({ x: lx, y: this.getHeight(lx, lz), z: lz, tier: zone.tier, type, zone: zone.id });
+    }
+  }
+
+  // floor bands, balconies, AC units, awnings, water tanks, solar heaters, dishes (decor only – no colliders)
+  decorateBuilding(B, rng) {
+    const { x, z, w, d, minX, maxX, minZ, maxZ, base, top, h, color, st, type, zone, doorSide, sides } = B;
+    const darker = new THREE.Color(color).multiplyScalar(0.82).getHex();
+    const modern = ['beirut', 'amman', 'resort'].includes(zone.style), old = ['damascus', 'jerusalem', 'citadel'].includes(zone.style);
+    const floors = Math.max(1, Math.round(h / 3.1));
+    // floor bands and a base course
+    for (let f = 1; f < floors; f++) {
+      const y = base + f * 3.05;
+      this.addBox(x, y, minZ - 0.06, w + 0.12, 0.18, 0.12, darker, false); this.addBox(x, y, maxZ + 0.06, w + 0.12, 0.18, 0.12, darker, false);
+      this.addBox(minX - 0.06, y, z, 0.12, 0.18, d + 0.12, darker, false); this.addBox(maxX + 0.06, y, z, 0.12, 0.18, d + 0.12, darker, false);
+    }
+    this.addBox(x, base + 0.3, minZ - 0.05, w + 0.1, 0.6, 0.1, darker, false); this.addBox(x, base + 0.3, maxZ + 0.05, w + 0.1, 0.6, 0.1, darker, false);
+    sides.forEach((s, i) => {
+      const len = s.b - s.a, mid = (s.a + s.b) / 2;
+      const at = (along, y, out, sx, sy, sz, col) => {   // place a box on this façade
+        if (s.ax === 'x') this.addBox(along, y, s.fixed + s.out * out, sx, sy, sz, col, false);
+        else this.addBox(s.fixed + s.out * out, y, along, sz, sy, sx, col, false);
+      };
+      // balcony on upper floors (modern + some old houses), never above the door
+      if (floors >= 2 && i !== doorSide && rng() < (modern ? 0.75 : 0.35)) {
+        for (let f = 1; f < floors; f++) {
+          const y = base + f * 3.05 + 0.05, bw = Math.min(len * 0.6, 4.2);
+          at(mid, y, 0.75, bw, 0.15, 1.3, 0xd8d2c6);
+          at(mid, y + 0.55, 1.35, bw, 0.9, 0.06, modern ? 0x2a2d30 : 0x5a3a24);        // railing
+          if (rng() < 0.4) at(mid - bw * 0.3, y + 1.4, 0.6, bw * 0.4, 1.6, 0.05, [0xc0392b, 0x2f6fae, 0xe8c547, 0x3f8f5a][(rng() * 4) | 0]); // washing / awning cloth
+        }
+      }
+      // AC units under some windows
+      if (modern && rng() < 0.6) at(s.a + len * (0.2 + rng() * 0.6), base + 1 + Math.floor(rng() * floors) * 3.05, 0.35, 0.8, 0.55, 0.45, 0xe6e6e2);
+      // shop awning / clinic cross / police light over the door
+      if (i === doorSide) {
+        const awn = { shop: 0x2f9e5b, hospital: 0xffffff, police: 0x2f5fb3 }[type];
+        if (awn != null) at(mid, base + 3.0, 0.7, Math.min(len, 3.6), 0.12, 1.3, awn);
+        if (type === 'hospital') { at(mid, base + 3.6, 0.2, 0.7, 0.22, 0.06, 0xd23b3b); at(mid, base + 3.6, 0.2, 0.22, 0.7, 0.06, 0xd23b3b); }
+        if (old) at(mid, base + 2.75, 0.18, 2.8, 0.25, 0.1, darker);                         // stone lintel
+      }
+    });
+    // roof life: black water tanks (+ stands), solar heaters, dishes, a stair hut
+    const tanks = 1 + ((rng() * (w * d > 90 ? 3 : 2)) | 0);
+    for (let k = 0; k < tanks; k++) {
+      const tx = lerp(minX + 1, maxX - 1, rng()), tz = lerp(minZ + 1, maxZ - 1, rng());
+      this.addCyl(tx, top + 0.3, tz, 0.55, 1.1, rng() < 0.75 ? 0x1c1c1e : 0xd8d0c0, false);
+      this.addBox(tx, top + 0.3 + 1.15, tz, 0.3, 0.12, 0.3, 0x333333, false);
+    }
+    if (modern || rng() < 0.4) {
+      const sx = lerp(minX + 1.5, maxX - 1.5, rng()), sz = lerp(minZ + 1.5, maxZ - 1.5, rng());
+      this.boxes.push({ cx: sx, cy: top + 0.9, cz: sz, sx: 1.6, sy: 0.06, sz: 1.1, color: 0x1f3a5a, rotY: rng() * 3 });           // solar panel (tilted look via thin slab)
+      this.addCyl(sx + 0.9, top + 0.9, sz, 0.22, 1.1, 0xdddddd, false);
+      this.addBox(sx, top + 0.6, sz, 0.08, 0.6, 0.08, 0x777777, false);
+    }
+    if (rng() < 0.5) { // satellite dish
+      const dx = lerp(minX + 0.8, maxX - 0.8, rng()), dz = lerp(minZ + 0.8, maxZ - 0.8, rng());
+      this.addBox(dx, top + 0.6, dz, 0.06, 0.6, 0.06, 0x888888, false);
+      this.addCyl(dx, top + 0.85, dz, 0.4, 0.06, 0xe8e8e8, false);
+    }
+    if (floors >= 2 && w * d > 70 && rng() < 0.5) this.addBox(lerp(minX + 1.6, maxX - 1.6, rng()), top + 1.2, lerp(minZ + 1.6, maxZ - 1.6, rng()), 2.4, 2.1, 2.4, color, false); // stair hut
+    if (old && rng() < 0.25) { // little dome on old-city houses
+      const g = new THREE.SphereGeometry(1.3, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+      this.addMesh(g, 0xd8ccb0, x, top + 0.3, z);
     }
   }
 
@@ -386,6 +475,7 @@ export class World {
         occ.push({ minX: fx - 8, maxX: fx + 3, minZ: fz - 12, maxZ: fz + 12 });
       }
       buildLandmarks(this, zone, occ, rng);
+      buildStreets(this, zone, occ);
       let placed = 0;
       for (let tries = 0; tries < zone.buildings * 40 && placed < zone.buildings; tries++) {
         const a = rng() * Math.PI * 2, rr = Math.sqrt(rng()) * zone.br;
@@ -479,7 +569,7 @@ export class World {
   }
 
   buildBoxMesh() {
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff }), this.boxes.length);
+    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, map: DETAIL }), this.boxes.length);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color(), p = new THREE.Vector3(), s = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
     this.boxes.forEach((b, i) => {
       q.setFromAxisAngle(Y, b.rotY || 0);

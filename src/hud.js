@@ -43,9 +43,9 @@ export class HUD {
     const p = v => (v + HALF) / (HALF * 2) * S;
     // roads on top of the terrain
     ctx.strokeStyle = 'rgba(92,78,58,.55)'; ctx.lineWidth = 2.2; ctx.lineJoin = ctx.lineCap = 'round';
-    for (const line of w.roadLines || []) { ctx.beginPath(); line.forEach(([x, z], i) => i ? ctx.lineTo(p(x), p(z)) : ctx.moveTo(p(x), p(z))); ctx.stroke(); }
-    ctx.strokeStyle = 'rgba(232,214,170,.55)'; ctx.lineWidth = 0.9;
-    for (const line of w.roadLines || []) { ctx.beginPath(); line.forEach(([x, z], i) => i ? ctx.lineTo(p(x), p(z)) : ctx.moveTo(p(x), p(z))); ctx.stroke(); }
+    for (const road of w.roadLines || []) { ctx.lineWidth = road.major ? 3.2 : 1.8; ctx.strokeStyle = road.major ? 'rgba(60,60,64,.8)' : 'rgba(92,78,58,.55)'; ctx.beginPath(); road.pts.forEach(([x, z], i) => i ? ctx.lineTo(p(x), p(z)) : ctx.moveTo(p(x), p(z))); ctx.stroke(); }
+    for (const road of w.roadLines || []) { if (!road.major) continue; ctx.strokeStyle = 'rgba(240,226,180,.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); road.pts.forEach(([x, z], i) => i ? ctx.lineTo(p(x), p(z)) : ctx.moveTo(p(x), p(z))); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(80,80,84,.75)'; for (const s of w.streets || []) ctx.fillRect(p(s.minX), p(s.minZ), Math.max(1, p(s.maxX) - p(s.minX)), Math.max(1, p(s.maxZ) - p(s.minZ)));
     ctx.fillStyle = 'rgba(70,60,50,0.85)';
     for (const b of w.buildings) ctx.fillRect(p(b.minX), p(b.minZ), Math.max(1.5, p(b.maxX) - p(b.minX)), Math.max(1.5, p(b.maxZ) - p(b.minZ)));
     this.base = c;
@@ -101,6 +101,12 @@ export class HUD {
       ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; ctx.setLineDash([10, 6]);
       ctx.beginPath(); ctx.moveTo(X(g.plane.a.x), Z(g.plane.a.z)); ctx.lineTo(X(g.plane.b.x), Z(g.plane.b.z)); ctx.stroke(); ctx.setLineDash([]);
       const pp = g.plane.pos; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X(pp.x), Z(pp.z), 5, 0, 7); ctx.fill();
+    }
+    // vehicles
+    for (const v of g.vehicles ? g.vehicles.list : []) {
+      const x = X(v.pos.x), y = Z(v.pos.z); if (x < -5 || y < -5 || x > size + 5 || y > size + 5) continue;
+      ctx.fillStyle = v.dead ? '#555' : '#e8e8e8'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(-v.yaw); ctx.fillRect(-2, -3.5, 4, 7); ctx.strokeRect(-2, -3.5, 4, 7); ctx.restore();
     }
     // pings
     for (const pg of g.pings) {
@@ -196,12 +202,20 @@ export class HUD {
     document.body.classList.toggle('knocked', !!p.knocked);
     const tb = $('ctxE');
     if (tb) { const pr = g.prompt || ''; tb.style.display = /<b>E<\/b>/.test(pr) ? '' : 'none'; tb.textContent = /إنعاش/.test(pr) ? 'إنعاش' : /Loot|crate/i.test(pr) ? 'افتح' : 'التقط'; }
+    const vh = $('vehud');
+    if (vh) {
+      const v = p.state === 'vehicle' ? p.vehicle : null;
+      vh.style.display = v ? 'flex' : 'none';
+      if (v) vh.innerHTML = `<b>${Math.round(Math.abs(v.speed) * 3.6)}</b><small>km/h</small><span>${v.def.ar}</span><i><u style="width:${Math.max(0, v.hp / v.def.hp * 100)}%;background:${v.hp / v.def.hp > 0.3 ? '#e8e8e8' : '#ff4d4d'}"></u></i>`;
+    }
+    const fb = $('ctxF');
+    if (fb) fb.style.display = /<b>F<\/b>/.test(g.prompt || '') ? '' : 'none';
     if (this.bagOpen) { this.bagT = (this.bagT || 0) - dt; if (this.bagT <= 0) { this.bagT = 0.4; this.renderBag(); } }
     $('kills').textContent = p.kills;
     // ring info
     const r = g.ring;
     let rt = '';
-    if (g.map.training) rt = '🎯 ساحة التدريب · <b>F</b> تعبئة الرف · <b>Esc</b> الإعدادات';
+    if (g.map.training) rt = '🎯 ساحة التدريب · <b>U</b> تعبئة الرف · <b>F</b> سيارة · <b>Esc</b> الإعدادات';
     else if (g.phase === 'island') rt = `✈ الطيارة بتقلع بعد <b>${fmt(g.island.t)}</b> · ${g.mode.ar} · ${g.map.ar}`;
     else if (r.state === 'wait') rt = `Al-Tawq closes in <b>${fmt(r.timer)}</b>`;
     else if (r.state === 'shrink') rt = `<span class="warn">Al-Tawq is closing</span> <b>${fmt(r.timer)}</b>`;

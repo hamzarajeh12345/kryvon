@@ -232,6 +232,9 @@ code{background:#0006;padding:1px 5px;border-radius:4px}
 #touch .tb[data-k=KeyQ]{left:80px;top:42%}
 #touch .tb[data-k=KeyP]{left:50%;top:calc(max(10px,env(safe-area-inset-top)) + 58px);transform:translateX(-50%);width:36px;height:36px;font-size:15px}
 @media (pointer:coarse){.keys{display:none}#sara{display:none}#gearBtn{display:none}}
+#touch .tb[data-k=KeyF]{right:50%;bottom:calc(32% + 50px);transform:translateX(50%)}
+#vehud{display:none;position:absolute;right:16px;bottom:calc(max(12px,env(safe-area-inset-bottom)) + 120px);flex-direction:column;align-items:flex-end;background:var(--glass);padding:8px 12px;border-radius:10px;min-width:120px}
+#vehud b{font-size:30px;line-height:1}#vehud small{opacity:.7;font-size:11px}#vehud span{font-size:12px;margin-top:2px}#vehud i{display:block;width:100%;height:5px;background:#0006;border-radius:3px;margin-top:5px;overflow:hidden}#vehud u{display:block;height:100%}
 #touch .tb[data-k=KeyI]{left:16px;top:calc(42% + 124px)}
 #touch .tb[data-k=KeyZ]{left:80px;top:calc(42% + 62px)}
 #touch .tb[data-k=Ping]{left:80px;top:calc(42% + 124px)}
@@ -328,6 +331,7 @@ body.knocked #dmgflash{opacity:.35!important}
   <div id="feed"></div>
   <div id="counts"><div><b id="alive">100</b><small>ALIVE</small></div><div><b id="teamsleft">25</b><small>TEAMS</small></div><div><b id="kills">0</b><small>KILLS</small></div></div>
   <div id="team"></div><div id="chatlog"></div>
+  <div id="vehud"></div>
   <canvas id="minimap" width="300" height="300"></canvas>
   <div id="weather"></div>
   <button id="gearBtn" class="p" title="القائمة (Esc)">⚙</button>
@@ -356,6 +360,7 @@ body.knocked #dmgflash{opacity:.35!important}
   <div class="tb" data-k="sprint">RUN</div>
   <div class="tb" data-k="KeyR">R</div>
   <div class="tb" data-k="KeyE" id="ctxE" style="display:none">LOOT</div>
+  <div class="tb" data-k="KeyF" id="ctxF" style="display:none">🚗</div>
   <div class="tb" data-k="KeyI">🎒</div>
   <div class="tb" data-k="KeyZ">💬</div>
   <div class="tb" data-k="Ping">📍</div>

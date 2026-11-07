@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { WEAPONS, ITEMS, AMMO, ARMOR, RARITY_COLORS, HALF, ATTACHMENTS } from './config.js';
 import { itemRarity } from './actor.js';
 import { buildGun, prep, M4, BODY_MAT } from './character.js';
+import { propGeometry, propReady } from './props.js';
+// generated weapon models: key + real length in metres
+const GUN_MODEL = { AR: ['w_ar', 0.95], SMG: ['w_smg', 0.65], SG: ['w_shotgun', 1.0], PISTOL: ['w_pistol', 0.24], SNIPER: ['w_sniper', 1.25], DMR: ['w_sniper', 1.1], LMG: ['w_lmg', 1.1] };
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const pickW = (pairs) => { // [[value, weight], ...]
@@ -138,7 +141,11 @@ export class LootSystem {
   meshFor(key) {
     let m = this.meshes.get(key);
     if (!m) {
-      m = new THREE.InstancedMesh(model(key), BODY_MAT, key.startsWith('w:') ? 900 : 700);
+      const gm = key.startsWith('w:') && GUN_MODEL[key.slice(2)];
+      // lie the gun on its side: roll 90° about its length axis
+      const real = gm && propReady(gm[0]) ? propGeometry(gm[0], { len: gm[1] }, new THREE.Euler(0, 0, Math.PI / 2)) : null;
+      if (real) real.geometry.translate(0, 0.06, 0);
+      m = real ? new THREE.InstancedMesh(real.geometry, real.material, 900) : new THREE.InstancedMesh(model(key), BODY_MAT, key.startsWith('w:') ? 900 : 700);
       m.count = 0; m.castShadow = true; m.frustumCulled = false; m.free = [];
       this.meshes.set(key, m); this.game.scene.add(m);
     }

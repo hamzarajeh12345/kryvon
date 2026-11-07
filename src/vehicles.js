@@ -10,17 +10,27 @@ import { clamp, mulberry32 } from './world.js';
 const GLASS = 0x1b2630, DARK = 0x1c1d1f, CHROME = 0xb8bcc0, LIGHT = 0xfff3c0, TAIL = 0xc0262d, TYRE = 0x161616, RIM = 0x8a8d90;
 const WRECK = new THREE.MeshLambertMaterial({ color: 0x2a2724 });
 
+import { propClone, propReady } from './props.js';
+
+// generated 3D model per vehicle type (procedural model is the fallback)
+const MODEL = { pickup: 'v_pickup', taxi: 'v_sedan', buggy: 'v_jeep', moto: 'v_moto', armored: 'v_armored', trike: 'v_trike' };
+const PROCEDURAL = new Set(['pickup', 'taxi', 'minibus', 'buggy', 'moto']);
+
 export const VEHICLES = {
   pickup:  { ar: 'بيك أب',     len: 5.0, wid: 2.0, hgt: 1.95, maxSpeed: 30, accel: 8.5, brake: 20, reverse: 8, turn: 1.2, hp: 320, offroad: 0.85, cam: 8.5, camH: 2.6,
              seats: [[-0.45, 1.1, -0.35], [0.45, 1.1, -0.35], [-0.5, 1.45, 1.5], [0.5, 1.45, 1.5]], colors: [0xeeeeea, 0xb83a2a, 0xc9b38a, 0x2f5a8a, 0x4a4f3a] },
-  taxi:    { ar: 'تكسي',       len: 4.5, wid: 1.85, hgt: 1.5, maxSpeed: 34, accel: 10, brake: 22, reverse: 9, turn: 1.35, hp: 230, offroad: 0.7, cam: 7.5, camH: 2.3,
+  taxi:    { ar: 'سيدان',      len: 4.5, wid: 1.85, hgt: 1.5, maxSpeed: 34, accel: 10, brake: 22, reverse: 9, turn: 1.35, hp: 230, offroad: 0.7, cam: 7.5, camH: 2.3,
              seats: [[-0.42, 0.95, -0.2], [0.42, 0.95, -0.2], [-0.42, 0.95, 0.75], [0.42, 0.95, 0.75]], colors: [0xf2c200, 0xf2c200, 0xeeeeea, 0x2f6b4a, 0x6a1f2a] },
   minibus: { ar: 'سرفيس',      len: 5.6, wid: 2.05, hgt: 2.45, maxSpeed: 25, accel: 6.5, brake: 18, reverse: 7, turn: 1.0, hp: 400, offroad: 0.7, cam: 9.5, camH: 3,
              seats: [[-0.5, 1.25, -1.6], [0.5, 1.25, -1.6], [-0.5, 1.25, -0.2], [0.5, 1.25, -0.2], [-0.5, 1.25, 1.0], [0.5, 1.25, 1.0]], colors: [0xeeeeea, 0xe8dcc0, 0xdfe6ea] },
-  buggy:   { ar: 'باغي رملي',  len: 3.4, wid: 1.9, hgt: 1.6, maxSpeed: 31, accel: 12, brake: 22, reverse: 9, turn: 1.55, hp: 170, offroad: 1.0, cam: 7, camH: 2.2,
+  buggy:   { ar: 'جيب عسكري',  len: 3.9, wid: 1.85, hgt: 1.9, maxSpeed: 31, accel: 12, brake: 22, reverse: 9, turn: 1.55, hp: 170, offroad: 1.0, cam: 7, camH: 2.2,
              seats: [[-0.4, 0.85, 0.0], [0.4, 0.85, 0.0]], colors: [0xe07a1f, 0x3a8a3a, 0x2a2a2a, 0xc9a46a] },
   moto:    { ar: 'دراجة نارية', len: 2.1, wid: 0.8, hgt: 1.3, maxSpeed: 38, accel: 13, brake: 24, reverse: 4, turn: 1.9, hp: 100, offroad: 0.85, cam: 5.5, camH: 2,
              seats: [[0, 1.05, 0.1], [0, 1.15, 0.6]], colors: [0x1c1c1c, 0xb83a2a, 0x2f5a8a, 0xd9a520] },
+  armored: { ar: 'مدرّعة',      len: 5.3, wid: 2.3, hgt: 2.4, maxSpeed: 24, accel: 6, brake: 16, reverse: 6, turn: 0.95, hp: 900, offroad: 0.95, cam: 10, camH: 3.2,
+             seats: [[-0.5, 1.3, -0.6], [0.5, 1.3, -0.6], [-0.5, 1.3, 0.8], [0.5, 1.3, 0.8]], colors: [0xc9b38a] },
+  trike:   { ar: 'تريسيكل',     len: 2.7, wid: 1.25, hgt: 1.6, maxSpeed: 26, accel: 9, brake: 20, reverse: 5, turn: 1.6, hp: 140, offroad: 0.75, cam: 6, camH: 2.2,
+             seats: [[0, 1.0, -0.15]], colors: [0xf2c200] },
 };
 
 // ---------- models ----------
@@ -123,10 +133,14 @@ export class Vehicle {
     this.pos = new THREE.Vector3(x, sys.world.getHeight(x, z), z);
     this.yaw = yaw; this.speed = 0; this.steer = 0; this.hp = this.def.hp; this.dead = false;
     this.seats = this.def.seats.map(() => null);
-    const geo = sys.geometry(type, color);
     this.mesh = new THREE.Group();
-    this.body = new THREE.Mesh(geo.body, BODY_MAT); this.body.castShadow = true; this.body.receiveShadow = true;
-    this.wheels = new THREE.Mesh(geo.wheels, BODY_MAT); this.wheels.castShadow = true;
+    const real = MODEL[type] && propReady(MODEL[type]) ? propClone(MODEL[type], { len: this.def.len }) : null;
+    if (real) { this.body = real; this.wheels = new THREE.Group(); }
+    else {
+      const geo = sys.geometry(PROCEDURAL.has(type) ? type : 'pickup', color);
+      this.body = new THREE.Mesh(geo.body, BODY_MAT); this.body.castShadow = true; this.body.receiveShadow = true;
+      this.wheels = new THREE.Mesh(geo.wheels, BODY_MAT); this.wheels.castShadow = true;
+    }
     this.mesh.add(this.body, this.wheels);
     this.mesh.rotation.order = 'YXZ';
     sys.game.scene.add(this.mesh);
@@ -217,7 +231,7 @@ export class Vehicle {
   destroy(attacker) {
     if (this.dead) return;
     this.dead = true; this.hp = 0;
-    this.body.material = WRECK; this.wheels.material = WRECK;
+    for (const o of [this.body, this.wheels]) o.traverse(m => { if (m.isMesh) m.material = WRECK; });
     const occupants = this.seats.filter(Boolean);
     for (const a of occupants) this.sys.exit(a, true);
     this.sys.game.explode(this.pos.x, this.pos.y + 1, this.pos.z, 7, 120, attacker, 'Vehicle explosion');
@@ -269,7 +283,7 @@ export class VehicleSystem {
       if (this.world.insideBuilding(s.x, s.z, 1000) || this.list.some(v => Math.hypot(v.pos.x - s.x, v.pos.z - s.z) < 9)) continue;
       const desert = (s.x > 250 && s.z < -200) || s.z > 420;
       const pick = (pairs) => { let t = 0; for (const p of pairs) t += p[1]; let r = rng() * t; for (const p of pairs) { r -= p[1]; if (r <= 0) return p[0]; } return pairs[0][0]; };
-      const type = desert ? pick([['buggy', 4], ['pickup', 4], ['moto', 2]]) : pick([['pickup', 3], ['taxi', 3], ['minibus', 1.5], ['moto', 2], ['buggy', 1]]);
+      const type = desert ? pick([['buggy', 4], ['pickup', 4], ['moto', 2], ['armored', 1]]) : pick([['pickup', 3], ['taxi', 3], ['minibus', 1.5], ['moto', 2], ['buggy', 1], ['trike', 1.5], ['armored', 0.5]]);
       this.spawn(type, s.x, s.z, s.yaw, rng);
     }
   }

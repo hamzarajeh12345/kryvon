@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { loadHeroes } from './heroes.js';
+import { loadProps, propReady, propClone } from './props.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { HALF, BOT_NAMES, WEAPONS, ITEMS, PRESETS, WEATHER, AIRDROP_INTERVAL, RARITY_COLORS, AMMO, ARMOR, ATTACHMENTS, ATT_SLOTS, QUICK_CHAT, ZONES } from './config.js';
 import { World, clamp } from './world.js';
@@ -33,7 +34,10 @@ class Plane {
     this.a.y = this.b.y = alt;
     this.len = len; this.t = 0; this.speed = speed; this.active = true;
     this.pos = this.a.clone();
-    const { group: g, props } = buildPlaneMesh(); this.props = props;
+    let g, props = [];
+    if (propReady('jet')) { g = new THREE.Group(); const j = propClone('jet', { len: 24 }); j.position.y = -2; g.add(j); }
+    else ({ group: g, props } = buildPlaneMesh());
+    this.props = props;
     g.rotation.y = Math.atan2(-this.dir.x, -this.dir.z);
     this.mesh = g; game.scene.add(g);
   }
@@ -67,7 +71,7 @@ class Game {
     $('lobby').style.display = 'none'; $('auth').style.display = 'none';
     $('loading').style.display = 'flex';
     const lm = document.getElementById('loadmsg'); if (lm) lm.textContent = 'تحميل الشخصيات…';
-    setTimeout(() => loadHeroes().catch(() => {}).then(() => this.build()), 50);
+    setTimeout(() => Promise.all([loadHeroes(), loadProps()]).catch(() => {}).then(() => this.build()), 50);
   }
 
   build() {

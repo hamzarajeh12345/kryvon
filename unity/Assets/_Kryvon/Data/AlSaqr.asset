@@ -62,7 +62,7 @@ MonoBehaviour:
   allowedScopes: 00000000010000000200000003000000040000000500000006000000i
   moveSpeedMultiplier: 1
   viewPrefab: {fileID: 0}
-  shotSound: {fileID: 0}
-  suppressedShotSound: {fileID: 0}
-  reloadSound: {fileID: 0}
-  drySound: {fileID: 0}
+  shotSound: {fileID: 8300000, guid: f17541810066bc745b9f03b6a5a591e8, type: 3}
+  suppressedShotSound: {fileID: 8300000, guid: 282d38ce8260ca543b7476ddc96e2759, type: 3}
+  reloadSound: {fileID: 8300000, guid: d816092b48175ce448da01ccbe9f1468, type: 3}
+  drySound: {fileID: 8300000, guid: c6853186b704ad34eb694407cfdc7b13, type: 3}

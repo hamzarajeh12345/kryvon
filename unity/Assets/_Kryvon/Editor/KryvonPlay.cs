@@ -1,0 +1,262 @@
+// Builds the playable street: the Hyper3D character as the player with skeletal animation, sounds, targets.
+// Menu: KRYVON/Build Play Scene   |   remote: Kryvon.EditorTools.KryvonPlay.BuildAndCapture
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEditor.Animations;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+
+namespace Kryvon.EditorTools
+{
+    public static class KryvonPlay
+    {
+        const string Root = "Assets/_Kryvon";
+        const string AnimDir = Root + "/Animations";
+        public static string PlayerCharacter = "sara";
+
+        // ---------- animation ----------
+        static AnimationClip InPlace(string ch, AnimationClip src, bool loop)
+        {
+            Directory.CreateDirectory(AnimDir + "/" + ch);
+            var path = $"{AnimDir}/{ch}/{src.name}.anim";
+            var clip = new AnimationClip { name = src.name, frameRate = src.frameRate };
+            foreach (var b in AnimationUtility.GetCurveBindings(src))
+            {
+                var curve = AnimationUtility.GetEditorCurve(src, b);
+                bool hipsXZ = b.path.EndsWith("Hips") && (b.propertyName == "m_LocalPosition.x" || b.propertyName == "m_LocalPosition.z");
+                if (hipsXZ && curve.length > 0)
+                {
+                    float v = curve.keys[0].value; curve = AnimationCurve.Constant(curve.keys[0].time, curve.keys[curve.length - 1].time, v);
+                }
+                AnimationUtility.SetEditorCurve(clip, b, curve);
+            }
+            var s = AnimationUtility.GetAnimationClipSettings(clip); s.loopTime = loop; AnimationUtility.SetAnimationClipSettings(clip, s);
+            AssetDatabase.DeleteAsset(path); AssetDatabase.CreateAsset(clip, path);
+            return clip;
+        }
+
+        public static RuntimeAnimatorController BuildController(string ch)
+        {
+            var glb = $"{Root}/Models/Characters/{ch}.glb";
+            var clips = AssetDatabase.LoadAllAssetsAtPath(glb).OfType<AnimationClip>().ToDictionary(c => c.name);
+            if (clips.Count == 0) { Debug.LogWarning("KRYVON: no animations in " + glb); return null; }
+            AnimationClip C(string n, bool loop = true) => clips.TryGetValue(n, out var c) ? InPlace(ch, c, loop) : null;
+            var idle = C("HumanSpIdle"); var walk = C("HumanSpWalking"); var run = C("HumanSpRun"); var sprint = C("HumanSpTwoCycleSprint") ?? run;
+            var crouch = C("HumanSpCrouchedWalking"); var crawl = C("HumanSpLowCrawl"); var jump = C("HumanSpJumping", false); var die = C("HumanSpDying", false);
+            var sit = C("HumanSpSitting"); var salute = C("HumanSpSalute");
+
+            var path = $"{AnimDir}/{ch}.controller";
+            AssetDatabase.DeleteAsset(path);
+            var ctrl = AnimatorController.CreateAnimatorControllerAtPath(path);
+            ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);
+            ctrl.AddParameter("Stance", AnimatorControllerParameterType.Int);
+            ctrl.AddParameter(new AnimatorControllerParameter { name = "Grounded", type = AnimatorControllerParameterType.Bool, defaultBool = true });
+            ctrl.AddParameter("Dead", AnimatorControllerParameterType.Bool);
+            ctrl.AddParameter("Knocked", AnimatorControllerParameterType.Bool);
+            ctrl.AddParameter("Jump", AnimatorControllerParameterType.Trigger);
+            var sm = ctrl.layers[0].stateMachine;
+
+            AnimatorState Tree(string name, params (Motion m, float at, float ts)[] kids)
+            {
+                var st = ctrl.CreateBlendTreeInController(name, out var tree, 0);
+                tree.blendParameter = "Speed"; tree.useAutomaticThresholds = false;
+                foreach (var k in kids) if (k.m != null) tree.AddChild(k.m, k.at);
+                var ch2 = tree.children;
+                for (int i = 0, j = 0; i < kids.Length; i++) if (kids[i].m != null) { ch2[j].timeScale = kids[i].ts; j++; }
+                tree.children = ch2;
+                return st;
+            }
+            var loco = Tree("Locomotion", (idle, 0f, 1f), (walk, 1.9f, 1f), (run, 4.8f, 1f), (sprint, 6.4f, 1f));
+            var crouchS = Tree("Crouch", (crouch, 0f, 0.02f), (crouch, 2.4f, 1f));
+            var proneS = Tree("Prone", (crawl, 0f, 0.02f), (crawl, 1.1f, 1f));
+            var knock = Tree("Knocked", (crawl, 0f, 0.02f), (crawl, 0.9f, 0.8f));
+            var air = sm.AddState("Air"); air.motion = jump;
+            var dead = sm.AddState("Dead"); dead.motion = die;
+            var sitS = sm.AddState("Sit"); sitS.motion = sit;
+            var sal = sm.AddState("Salute"); sal.motion = salute;
+            sm.defaultState = loco;
+
+            AnimatorStateTransition T(AnimatorState a, AnimatorState b, float dur = 0.18f)
+            { var t = a.AddTransition(b); t.hasExitTime = false; t.duration = dur; return t; }
+            void Stance(AnimatorState from, AnimatorState to, int s) => T(from, to, 0.25f).AddCondition(AnimatorConditionMode.Equals, s, "Stance");
+            foreach (var (a, b, s) in new[] { (loco, crouchS, 1), (loco, proneS, 2), (crouchS, loco, 0), (crouchS, proneS, 2), (proneS, loco, 0), (proneS, crouchS, 1) }) Stance(a, b, s);
+            foreach (var st in new[] { loco, crouchS }) T(st, air, 0.12f).AddCondition(AnimatorConditionMode.If, 0, "Jump");
+            var land = T(air, loco, 0.15f); land.AddCondition(AnimatorConditionMode.If, 0, "Grounded"); land.hasExitTime = true; land.exitTime = 0.35f;
+            var d1 = sm.AddAnyStateTransition(dead); d1.AddCondition(AnimatorConditionMode.If, 0, "Dead"); d1.duration = 0.2f; d1.canTransitionToSelf = false;
+            var k1 = sm.AddAnyStateTransition(knock); k1.AddCondition(AnimatorConditionMode.If, 0, "Knocked"); k1.AddCondition(AnimatorConditionMode.IfNot, 0, "Dead"); k1.canTransitionToSelf = false; k1.duration = 0.25f;
+            T(knock, loco, 0.3f).AddCondition(AnimatorConditionMode.IfNot, 0, "Knocked");
+            AssetDatabase.SaveAssets();
+            return ctrl;
+        }
+
+        static void Animate(GameObject modelRoot, RuntimeAnimatorController rc)
+        {
+            var an = modelRoot.GetComponentInChildren<Animator>();
+            if (an == null) an = modelRoot.transform.GetChild(0).gameObject.AddComponent<Animator>();
+            an.runtimeAnimatorController = rc; an.applyRootMotion = false; an.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+        }
+
+        // ---------- scene ----------
+        static void Set(Object target, string field, object value)
+        {
+            var so = new SerializedObject(target); var p = so.FindProperty(field);
+            if (p == null) { Debug.LogWarning($"KRYVON: field '{field}' not on {target.GetType().Name}"); return; }
+            switch (value)
+            {
+                case Object[] arr: p.arraySize = arr.Length; for (int i = 0; i < arr.Length; i++) p.GetArrayElementAtIndex(i).objectReferenceValue = arr[i]; break;
+                case Object o: p.objectReferenceValue = o; break;
+                case float f: p.floatValue = f; break;
+                case int i2: p.intValue = i2; break;
+                case bool b: p.boolValue = b; break;
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+        static AudioClip A(string n) => AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/Audio/{n}.wav");
+
+        static WeaponData Weapon(string file, System.Action<WeaponData> setup)
+        {
+            var path = $"{Root}/Data/{file}.asset";
+            var w = AssetDatabase.LoadAssetAtPath<WeaponData>(path);
+            if (w == null) { Directory.CreateDirectory(Root + "/Data"); w = ScriptableObject.CreateInstance<WeaponData>(); setup(w); AssetDatabase.CreateAsset(w, path); }
+            return w;
+        }
+
+        static void BoxCollide(Transform pivot)
+        {
+            var rs = pivot.GetComponentsInChildren<Renderer>(); if (rs.Length == 0) return;
+            var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+            var bc = pivot.gameObject.AddComponent<BoxCollider>();
+            bc.center = pivot.InverseTransformPoint(b.center);
+            var s = pivot.InverseTransformVector(b.size); bc.size = new Vector3(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z)) * 0.96f;
+        }
+
+        [MenuItem("KRYVON/Build Play Scene")]
+        public static void Build()
+        {
+            if (A("gun_ar") == null) KryvonAudioGen.GenerateAll();
+            KryvonShowcase.Build();                                   // street, lights, sky, post-fx, squad, camera
+            var scene = EditorSceneManager.GetActiveScene();
+
+            foreach (var g in new[] { "Buildings", "Vehicles" })
+            {
+                var root = GameObject.Find(g); if (root == null) continue;
+                foreach (Transform t in root.transform) BoxCollide(t);
+            }
+
+            // ---------- sounds on the weapons ----------
+            var rifle = Weapon("AlSaqr", w => { w.weaponId = "saqr"; w.displayName = "Al-Saqr"; w.arabicName = "الصقر"; w.weaponClass = WeaponClass.AssaultRifle; w.ammoType = AmmoType.A556; });
+            var sniper = Weapon("AlQannas", w =>
+            {
+                w.weaponId = "qannas"; w.displayName = "Al-Qannas"; w.arabicName = "القنّاص"; w.weaponClass = WeaponClass.Sniper; w.ammoType = AmmoType.A300;
+                w.damage = 78; w.headshotMultiplier = 2.5f; w.roundsPerMinute = 48; w.magazineSize = 5; w.reloadSeconds = 3.2f; w.fireModes = new[] { FireMode.Single }; w.range = 750; w.defaultScope = ScopeType.X4;
+            });
+            rifle.shotSound = A("gun_ar"); rifle.suppressedShotSound = A("gun_suppressed"); rifle.reloadSound = A("reload"); rifle.drySound = A("ui_dry_fire");
+            sniper.shotSound = A("gun_sniper"); sniper.suppressedShotSound = A("gun_suppressed"); sniper.reloadSound = A("reload"); sniper.drySound = A("ui_dry_fire");
+            EditorUtility.SetDirty(rifle); EditorUtility.SetDirty(sniper);
+
+            // ---------- player ----------
+            var spawn = new Vector3(0, 0.05f, -3.5f);
+            var player = new GameObject("Player"); player.transform.position = spawn;
+            var cc = player.AddComponent<CharacterController>(); cc.radius = 0.35f; cc.height = 1.8f; cc.center = new Vector3(0, 0.9f, 0); cc.stepOffset = 0.35f; cc.slopeLimit = 45f;
+            player.AddComponent<PlayerInputReader>();
+            player.AddComponent<Health>().teamId = 0;
+            var src = player.AddComponent<AudioSource>(); src.playOnAwake = false; src.spatialBlend = 0f;
+            var weapons = player.AddComponent<WeaponController>();
+            var body = player.AddComponent<PlayerController>();
+            var wso = new SerializedObject(weapons);
+            var slots = wso.FindProperty("slots"); slots.arraySize = 2;
+            void Slot(int i, WeaponData d, ScopeType sc, int n) { var e = slots.GetArrayElementAtIndex(i); e.FindPropertyRelative("data").objectReferenceValue = d; e.FindPropertyRelative("scope").enumValueIndex = (int)sc; e.FindPropertyRelative("ammo").intValue = n; }
+            Slot(0, rifle, ScopeType.RedDot, 30); Slot(1, sniper, ScopeType.X4, 5);
+            var ammo = wso.FindProperty("ammo"); ammo.arraySize = 2;
+            ammo.GetArrayElementAtIndex(0).FindPropertyRelative("type").enumValueIndex = (int)AmmoType.A556; ammo.GetArrayElementAtIndex(0).FindPropertyRelative("amount").intValue = 600;
+            ammo.GetArrayElementAtIndex(1).FindPropertyRelative("type").enumValueIndex = (int)AmmoType.A300; ammo.GetArrayElementAtIndex(1).FindPropertyRelative("amount").intValue = 60;
+            wso.FindProperty("audioSource").objectReferenceValue = src;
+            wso.ApplyModifiedPropertiesWithoutUndo();
+
+            // the character model, animated
+            var squad = GameObject.Find("Squad");
+            var model = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Models/Characters/{PlayerCharacter}.glb"), player.transform);
+            FitHeight(model, 1.8f);
+            Animate(model, BuildController(PlayerCharacter));
+            player.AddComponent<PlayerAnimatorBridge>();
+
+            var fs = player.AddComponent<KryvonFootsteps>();
+            Set(fs, "hard", Enumerable.Range(0, 6).Select(i => (Object)A($"step_hard_{i}")).ToArray());
+            Set(fs, "dirt", Enumerable.Range(0, 6).Select(i => (Object)A($"step_dirt_{i}")).ToArray());
+            var flashGo = new GameObject("MuzzleLight"); flashGo.transform.SetParent(player.transform, false); flashGo.transform.localPosition = new Vector3(0.25f, 1.35f, 0.75f);
+            var fl = flashGo.AddComponent<Light>(); fl.type = LightType.Point; fl.range = 6; fl.color = new Color(1f, 0.75f, 0.4f); fl.enabled = false;
+            var mfx = player.AddComponent<KryvonMuzzleFX>();
+            Set(mfx, "flash", fl); Set(mfx, "source", src); Set(mfx, "impactHard", A("impact_concrete")); Set(mfx, "impactBody", A("impact_body"));
+
+            // ---------- the rest of the squad become live targets ----------
+            if (squad != null)
+            {
+                int team = 1;
+                foreach (Transform t in squad.transform)
+                {
+                    if (!t.name.StartsWith("w_") && t.GetComponentInChildren<SkinnedMeshRenderer>() != null)
+                    {
+                        if (t.name == PlayerCharacter) { Object.DestroyImmediate(t.gameObject); break; }
+                    }
+                }
+                foreach (Transform t in squad.transform.Cast<Transform>().ToArray())
+                {
+                    if (t.name.StartsWith("w_")) continue;
+                    var h = t.gameObject.AddComponent<Health>(); h.teamId = team++;
+                    var hb = new GameObject("HitBody"); hb.transform.SetParent(t, false);
+                    var cap = hb.AddComponent<CapsuleCollider>(); cap.center = new Vector3(0, 0.8f, 0); cap.height = 1.6f; cap.radius = 0.32f;
+                    hb.AddComponent<HitBox>().owner = h;
+                    var hd = new GameObject("HitHead"); hd.transform.SetParent(t, false); hd.transform.localPosition = new Vector3(0, 1.66f, 0);
+                    hd.AddComponent<SphereCollider>().radius = 0.14f;
+                    var hh = hd.AddComponent<HitBox>(); hh.owner = h; hh.isHead = true;
+                    var rc = BuildController(t.name); if (rc != null) Animate(t.gameObject, rc);
+                    t.gameObject.AddComponent<TargetRespawn>();
+                }
+            }
+
+            // ---------- camera: gameplay rig, no depth of field ----------
+            var cam = Camera.main;
+            cam.nearClipPlane = 0.05f; cam.fieldOfView = 70;
+            var rig = cam.gameObject.AddComponent<ThirdPersonCamera>();
+            Set(rig, "target", player.transform); Set(body, "cameraRig", rig);
+            var ovPath = Root + "/Settings/PlayOverrides.asset";
+            AssetDatabase.DeleteAsset(ovPath);
+            var ov = ScriptableObject.CreateInstance<VolumeProfile>(); AssetDatabase.CreateAsset(ov, ovPath);
+            var dof = ov.Add<DepthOfField>(true); dof.name = "DoF off"; dof.mode.Override(DepthOfFieldMode.Off); AssetDatabase.AddObjectToAsset(dof, ov);
+            var v = new GameObject("PlayOverrides").AddComponent<Volume>(); v.isGlobal = true; v.priority = 10; v.sharedProfile = ov;
+
+            // ---------- ambience + HUD ----------
+            var amb = new GameObject("Ambience").AddComponent<KryvonAmbience>();
+            Set(amb, "beds", new Object[] { A("amb_wind"), A("amb_birds") });
+            var hud = new GameObject("HUD").AddComponent<KryvonDebugHUD>();
+            Set(hud, "player", player.GetComponent<Health>()); Set(hud, "weapons", weapons); Set(hud, "body", body); Set(hud, "cameraRig", rig);
+
+            var path = Root + "/Scenes/Play.unity";
+            EditorSceneManager.SaveScene(scene, path);
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(path, true), new EditorBuildSettingsScene(Root + "/Scenes/Test.unity", true) };
+            AssetDatabase.SaveAssets();
+            Debug.Log("KRYVON: play scene ready – press Play");
+        }
+
+        static void FitHeight(GameObject go, float h)
+        {
+            go.transform.localPosition = Vector3.zero; go.transform.localRotation = Quaternion.identity; go.transform.localScale = Vector3.one;
+            var rs = go.GetComponentsInChildren<Renderer>(); var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+            float s = h / Mathf.Max(0.01f, b.size.y); go.transform.localScale = Vector3.one * s;
+            b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+            var p = go.transform.parent; go.transform.position += new Vector3(p.position.x - b.center.x, p.position.y - b.min.y, p.position.z - b.center.z);
+        }
+
+        public static void BuildAndCapture()
+        {
+            Build();
+            var cam = Camera.main; var p = GameObject.Find("Player").transform;
+            cam.transform.position = p.position + new Vector3(0.7f, 1.75f, -3.0f); cam.transform.LookAt(p.position + new Vector3(0.2f, 1.45f, 4f));
+            KryvonShowcase.Capture(Path.Combine(Directory.GetCurrentDirectory(), "Play.png"));
+            EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+        }
+    }
+}

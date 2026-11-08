@@ -230,49 +230,59 @@ namespace Kryvon.EditorTools
             { WeaponClass.Pistol, ("w_pistol", 0.24f) }, { WeaponClass.Sniper, ("w_sniper", 1.25f) }, { WeaponClass.LMG, ("w_lmg", 1.1f) },
         };
         static Material glowMat;
-        static void DropLoot(Transform parent, Vector3 p)
+        public static readonly List<(Transform parent, Vector3 p)> lootSpotsUsed = new();
+        static readonly Dictionary<LootKind, (string model, float size, char axis, float lift, Vector3 euler)> LootModel = new()
+        {
+            { LootKind.Ammo, ("l_ammo", 0.42f, 'x', 0f, Vector3.zero) }, { LootKind.Bandage, ("l_bandage", 0.16f, 'x', 0f, new Vector3(90, 0, 0)) },
+            { LootKind.Medkit, ("l_medkit", 0.38f, 'y', 0f, new Vector3(-80, 0, 0)) }, { LootKind.Drink, ("l_drink", 0.17f, 'y', 0f, Vector3.zero) },
+            { LootKind.Syringe, ("l_syringe", 0.2f, 'y', 0.03f, new Vector3(90, 0, 0)) }, { LootKind.Grenade, ("l_grenade", 0.14f, 'y', 0f, Vector3.zero) },
+            { LootKind.Backpack, ("l_backpack", 0.55f, 'y', 0f, new Vector3(-75, 0, 0)) }, { LootKind.Scope, ("l_scope", 0.32f, 'x', 0f, Vector3.zero) },
+            { LootKind.FlareGun, ("l_flaregun", 0.3f, 'x', 0.02f, new Vector3(0, 0, 90)) },
+        };
+        static void DropLoot(Transform parent, Vector3 p) { lootSpotsUsed.Add((parent, p)); DropLoot(parent, p, null); }
+        static void DropLoot(Transform parent, Vector3 p, LootKind? force)
         {
             if (lootGuns.Count == 0) EnsureLootGuns();
             double r = rng.NextDouble();
-            GameObject g; KryvonLoot l; Color glow;
-            if (r < 0.32)
+            GameObject g; KryvonLoot l;
+            LootKind k = force ?? (r < 0.26 ? LootKind.Weapon : r < 0.46 ? LootKind.Ammo : r < 0.56 ? LootKind.Bandage : r < 0.62 ? LootKind.Medkit : r < 0.69 ? LootKind.Drink
+                : r < 0.73 ? LootKind.Syringe : r < 0.79 ? LootKind.Grenade : r < 0.86 ? LootKind.Vest : r < 0.92 ? LootKind.Helmet : r < 0.97 ? LootKind.Backpack : LootKind.Scope);
+            if (k == LootKind.Weapon)
             {
                 var wd = lootGuns[rng.Next(lootGuns.Count)];
                 var (model, len) = GunModel[wd.weaponClass];
                 g = Spawn("Weapons/" + model, len, 'z', parent) ?? new GameObject("Gun");
                 g.transform.position = p + Vector3.up * 0.04f; g.transform.rotation = Quaternion.Euler(0, R(0, 360), 90);
                 l = g.AddComponent<KryvonLoot>(); l.kind = LootKind.Weapon; l.weapon = wd;
-                glow = wd.weaponClass == WeaponClass.Sniper || wd.weaponClass == WeaponClass.LMG ? new Color(0.7f, 0.4f, 1f) : new Color(0.3f, 0.65f, 1f);
+                l.rarity = wd.weaponClass switch { WeaponClass.Sniper => 3, WeaponClass.LMG => 3, WeaponClass.AssaultRifle => 2, WeaponClass.Shotgun => 1, WeaponClass.SMG => 1, _ => 0 };
             }
             else
             {
-                LootKind k = r < 0.58 ? LootKind.Ammo : r < 0.72 ? LootKind.Bandage : r < 0.8 ? LootKind.Medkit : r < 0.9 ? LootKind.Vest : LootKind.Helmet;
-                var (col, size) = k switch
-                {
-                    LootKind.Ammo => (new Color(0.3f, 0.36f, 0.22f), new Vector3(0.36f, 0.2f, 0.22f)),
-                    LootKind.Bandage => (new Color(0.95f, 0.95f, 0.92f), new Vector3(0.18f, 0.08f, 0.12f)),
-                    LootKind.Medkit => (new Color(0.92f, 0.9f, 0.86f), new Vector3(0.4f, 0.22f, 0.28f)),
-                    LootKind.Vest => (new Color(0.22f, 0.25f, 0.2f), new Vector3(0.5f, 0.12f, 0.58f)),
-                    _ => (new Color(0.24f, 0.26f, 0.22f), new Vector3(0.32f, 0.2f, 0.36f)),
-                };
-                if (k == LootKind.Vest || k == LootKind.Helmet) g = ArmorModel(k, parent, p);
+                int level = 1 + (rng.NextDouble() < 0.3 ? 1 : 0) + (rng.NextDouble() < 0.08 ? 1 : 0);
+                if ((k == LootKind.Vest || k == LootKind.Helmet) && !File.Exists($"{Root}/Models/Loot/l_vest.glb")) g = ArmorModel(k, parent, p);
                 else
                 {
-                    g = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(g.GetComponent<Collider>());
-                    g.name = k.ToString(); g.transform.SetParent(parent, false);
-                    g.transform.position = p + Vector3.up * size.y / 2; g.transform.localScale = size; g.transform.rotation = Quaternion.Euler(0, R(0, 360), 0);
-                    g.GetComponent<Renderer>().sharedMaterial = PBRMat("M_Loot" + k, "concrete_floor_02", col, 0.6f);
+                    var (model, size, axis, lift, euler) = LootModel[k];
+                    float sc = k == LootKind.Backpack ? 0.85f + 0.15f * level : 1f;
+                    g = Spawn("Loot/" + model, size * sc, axis, parent);
+                    if (g == null) { g = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(g.GetComponent<Collider>()); g.transform.SetParent(parent, false); g.transform.localScale = Vector3.one * size; }
+                    g.name = k.ToString();
+                    var model0 = g.transform.childCount > 0 ? g.transform.GetChild(0) : null;
+                    if (model0) { model0.localRotation = Quaternion.Euler(euler) * model0.localRotation; }
+                    // re-seat on the floor after the tilt
+                    var rs = g.GetComponentsInChildren<Renderer>(); g.transform.position = p; g.transform.rotation = Quaternion.Euler(0, R(0, 360), 0);
+                    if (rs.Length > 0) { var b = rs[0].bounds; foreach (var rr in rs) b.Encapsulate(rr.bounds); g.transform.position += Vector3.up * (p.y - b.min.y + lift); }
                 }
-                if (k == LootKind.Medkit)
+                l = g.AddComponent<KryvonLoot>(); l.kind = k; l.level = level;
+                var gunForAmmo = lootGuns[rng.Next(lootGuns.Count)];
+                l.ammoType = gunForAmmo.ammoType; l.amount = k == LootKind.Bandage ? 5 : k == LootKind.Ammo ? Mathf.Max(10, gunForAmmo.magazineSize) : 1;
+                l.rarity = k switch
                 {
-                    var cross = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(cross.GetComponent<Collider>());
-                    cross.transform.SetParent(g.transform, false); cross.transform.localPosition = new Vector3(0, 0.51f, 0); cross.transform.localScale = new Vector3(0.5f, 0.02f, 0.18f);
-                    cross.GetComponent<Renderer>().sharedMaterial = PBRMat("M_LootCross", "concrete_floor_02", new Color(0.8f, 0.1f, 0.1f), 1f);
-                }
-                l = g.AddComponent<KryvonLoot>(); l.kind = k;
-                l.ammoType = lootGuns[rng.Next(lootGuns.Count)].ammoType; l.amount = k == LootKind.Bandage ? 5 : 30; l.level = 1 + (rng.NextDouble() < 0.3 ? 1 : 0) + (rng.NextDouble() < 0.08 ? 1 : 0);
-                glow = l.level >= 3 ? new Color(1f, 0.8f, 0.2f) : l.level == 2 ? new Color(0.3f, 0.65f, 1f) : new Color(0.85f, 0.85f, 0.85f);
+                    LootKind.Vest or LootKind.Helmet or LootKind.Backpack or LootKind.Scope => level == 3 ? 3 : level == 2 ? 2 : 1,
+                    LootKind.Medkit or LootKind.Syringe => 2, LootKind.Drink or LootKind.Grenade => 1, LootKind.FlareGun => 4, _ => 0,
+                };
             }
+            var glow = KryvonLoot.RarityColors[l.rarity];
             // soft rarity glow under the item
             if (glowMat == null)
             {

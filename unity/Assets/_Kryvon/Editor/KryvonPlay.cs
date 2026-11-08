@@ -146,6 +146,13 @@ namespace Kryvon.EditorTools
                 var root = GameObject.Find(g); if (root == null) continue;
                 foreach (Transform t in root.transform) BoxCollide(t);
             }
+            var street = GameObject.Find("Vehicles");
+            if (street) foreach (Transform t in street.transform.Cast<Transform>().ToArray())
+            {
+                var key = t.name; if (!key.StartsWith("v_")) continue;
+                var pos = t.position; var yaw = t.eulerAngles.y; Object.DestroyImmediate(t.gameObject);
+                KryvonWorld.MakeVehicle(key == "v_trike" ? "v_moto" : key, pos, yaw, street.transform);
+            }
 
             // ---------- sounds on the weapons ----------
             var rifle = Weapon("AlSaqr", w => { w.weaponId = "saqr"; w.displayName = "Al-Saqr"; w.arabicName = "الصقر"; w.weaponClass = WeaponClass.AssaultRifle; w.ammoType = AmmoType.A556; });
@@ -203,6 +210,10 @@ namespace Kryvon.EditorTools
             player.tag = "Player";
             KryvonWorld.MakeGrave(player, 8f);
             new GameObject("KillFeed").AddComponent<KryvonKillFeed>();
+            player.AddComponent<KryvonGear>(); player.AddComponent<KryvonLootLabels>();
+            var drop = player.AddComponent<KryvonAirdrop>();
+            Set(drop, "crateTemplate", KryvonWorld.MakeAirdropTemplate(GameObject.Find("Outskirts")?.transform));
+            Set(drop, "flareSound", A("gun_pistol")); Set(drop, "planeSound", A("vehicle_engine"));
             var picker = player.AddComponent<KryvonLootPicker>(); Set(picker, "pickupSound", AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactSoft_heavy_000.ogg"));
             var fs = player.AddComponent<KryvonFootsteps>();
             Object[] K(string prefix, string fallback) { var k = Enumerable.Range(0, 5).Select(i => (Object)AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/{prefix}_{i:000}.ogg")).Where(x => x != null).ToArray(); return k.Length > 0 ? k : Enumerable.Range(0, 6).Select(i => (Object)A($"{fallback}_{i}")).ToArray(); }

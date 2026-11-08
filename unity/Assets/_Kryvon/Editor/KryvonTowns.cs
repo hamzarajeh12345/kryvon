@@ -149,6 +149,107 @@ namespace Kryvon.EditorTools
             cam.fieldOfView = fov;
         }
 
+        // ---------- vehicles: in every area two cars, a motorcycle and a buggy ----------
+        static readonly Dictionary<string, (string name, float len, float wid, float speed, float accel, float turn, Vector3 seat, bool lean)> VehicleStats = new()
+        {
+            { "v_pickup", ("Pickup", 5.0f, 2.0f, 30, 8.5f, 62, new Vector3(-0.42f, 0.75f, 0.35f), false) },
+            { "v_sedan", ("Sedan", 4.5f, 1.85f, 34, 10, 68, new Vector3(-0.4f, 0.5f, -0.1f), false) },
+            { "v_jeep", ("Jeep", 3.9f, 1.85f, 31, 11, 72, new Vector3(-0.42f, 0.6f, -0.2f), false) },
+            { "v_armored", ("Armored Car", 5.3f, 2.3f, 24, 6, 50, new Vector3(-0.5f, 0.95f, 0.3f), false) },
+            { "v_minibus", ("Service Minibus", 5.6f, 2.05f, 25, 6.5f, 52, new Vector3(-0.5f, 0.8f, 1.6f), false) },
+            { "v_moto", ("Motorcycle", 2.1f, 0.8f, 38, 13, 95, new Vector3(0, 0.65f, -0.15f), true) },
+            { "v_buggy", ("Buggy", 3.4f, 1.9f, 33, 12, 82, new Vector3(-0.38f, 0.45f, -0.1f), false) },
+        };
+        public static GameObject MakeVehicle(string model, Vector3 pos, float yaw, Transform parent)
+        {
+            var st = VehicleStats[model];
+            var g = Spawn("Vehicles/" + model, st.len, 'z', parent); if (g == null) return null;
+            g.transform.position = pos; g.transform.rotation = Quaternion.Euler(0, yaw, 0);
+            Collide(g);
+            var v = g.AddComponent<KryvonVehicle>(); v.displayName = st.name;
+            var so = new SerializedObject(v);
+            so.FindProperty("maxSpeed").floatValue = st.speed; so.FindProperty("accel").floatValue = st.accel; so.FindProperty("turnRate").floatValue = st.turn;
+            so.FindProperty("length").floatValue = st.len; so.FindProperty("width").floatValue = st.wid; so.FindProperty("seat").vector3Value = st.seat; so.FindProperty("lean").boolValue = st.lean;
+            so.FindProperty("engine").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/Audio/vehicle_engine.wav");
+            so.FindProperty("crash").objectReferenceValue = K("impactMetal_heavy_000");
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return g;
+        }
+        static void PlaceVehicles(Transform parent)
+        {
+            Physics.SyncTransforms();
+            var root = new GameObject("AreaVehicles").transform; root.SetParent(parent, false);
+            var areas = new List<Vector2> { Vector2.zero };
+            foreach (var t in Towns) areas.Add(t);
+            foreach (var (c, _) in Sites) areas.Add(c);
+            var hs = GameObject.Find("Houses");
+            if (hs) for (int i = 0; i < hs.transform.childCount && areas.Count < 12; i += 4) { var p = hs.transform.GetChild(i).position; areas.Add(new Vector2(p.x, p.z)); }
+            string[] cars = { "v_pickup", "v_sedan", "v_jeep", "v_pickup", "v_sedan", "v_minibus", "v_armored" };
+            int made = 0;
+            foreach (var a in areas)
+            {
+                var list = new List<string> { cars[rng.Next(cars.Length)], cars[rng.Next(cars.Length)], "v_moto", "v_buggy" };
+                foreach (var m in list)
+                {
+                    var st = VehicleStats[m];
+                    for (int t = 0; t < 60; t++)
+                    {
+                        float ang = R(0, Mathf.PI * 2), rad = R(12, 55);
+                        float x = a.x + Mathf.Cos(ang) * rad, z = a.y + Mathf.Sin(ang) * rad;
+                        if (!Physics.Raycast(new Vector3(x, 400, z), Vector3.down, out var hit, 800, ~0, QueryTriggerInteraction.Ignore)) continue;
+                        if (Vector3.Angle(hit.normal, Vector3.up) > 12) continue;
+                        if (hit.point.y > 0.6f + (Terrain.activeTerrain ? Terrain.activeTerrain.SampleHeight(hit.point) + Terrain.activeTerrain.transform.position.y : hit.point.y)) continue;   // not on a roof
+                        float yaw = R(0, 360);
+                        var half = new Vector3(st.wid / 2 + 0.4f, 0.8f, st.len / 2 + 0.4f);
+                        if (Physics.CheckBox(hit.point + Vector3.up * 1.15f, half, Quaternion.Euler(0, yaw, 0), ~0, QueryTriggerInteraction.Ignore)) continue;
+                        if (MakeVehicle(m, hit.point, yaw, root)) { made++; Physics.SyncTransforms(); }
+                        break;
+                    }
+                }
+            }
+            Debug.Log($"KRYVON: {made} drivable vehicles in {areas.Count} areas");
+        }
+
+        // ---------- flare guns: exactly five on the whole map ----------
+        static void PlaceFlareGuns()
+        {
+            int placed = 0; var used = new HashSet<int>();
+            while (placed < 5 && used.Count < lootSpotsUsed.Count)
+            {
+                int i = rng.Next(lootSpotsUsed.Count); if (!used.Add(i)) continue;
+                var (parent, p) = lootSpotsUsed[i];
+                DropLoot(parent, p + new Vector3(0.6f, 0, 0.4f), LootKind.FlareGun); placed++;
+            }
+            Debug.Log($"KRYVON: {placed} flare guns hidden on the map");
+        }
+
+        // ---------- supply drop template (cloned at runtime by KryvonAirdrop) ----------
+        public static GameObject MakeAirdropTemplate(Transform parent)
+        {
+            if (lootGuns.Count == 0) EnsureLootGuns();
+            rng ??= new System.Random(11);
+            var root = new GameObject("AirdropTemplate"); root.transform.SetParent(parent, false);
+            var crate = Spawn("Loot/l_crate", 1.3f, 'x', root.transform);
+            if (crate) { Collide(crate); crate.AddComponent<KryvonDeathBox>(); }
+            var chute = new GameObject("Chute").transform; chute.SetParent(root.transform, false);
+            var cloth = PBRMat("M_Chute", "concrete_floor_02", new Color(0.9f, 0.3f, 0.12f), 1f);
+            Prim(PrimitiveType.Sphere, chute, new Vector3(0, 7.5f, 0), new Vector3(7f, 2.6f, 7f), cloth);
+            for (int i = 0; i < 4; i++) { float a = i * 90 + 45; Prim(PrimitiveType.Cylinder, chute, Quaternion.Euler(0, a, 0) * new Vector3(0, 4.2f, 1.7f), new Vector3(0.03f, 3.6f, 0.03f), cloth, new Vector3(25, a, 0)); }
+            var light = new GameObject("Beacon").AddComponent<Light>(); light.transform.SetParent(root.transform, false); light.transform.localPosition = Vector3.up * 2f;
+            light.type = LightType.Point; light.color = new Color(1f, 0.25f, 0.1f); light.range = 6; light.intensity = 3;
+            var inv = new GameObject("Inventory"); inv.transform.SetParent(root.transform, false);
+            void Item(LootKind k, System.Action<KryvonLoot> f) { var g = new GameObject(k.ToString()); g.transform.SetParent(inv.transform, false); var l = g.AddComponent<KryvonLoot>(); l.kind = k; f(l); }
+            var best = lootGuns.Find(w => w.weaponClass == WeaponClass.Sniper) ?? lootGuns[0];
+            var lmg = lootGuns.Find(w => w.weaponClass == WeaponClass.LMG) ?? lootGuns[0];
+            Item(LootKind.Weapon, l => l.weapon = best); Item(LootKind.Ammo, l => { l.ammoType = best.ammoType; l.amount = 20; });
+            Item(LootKind.Weapon, l => l.weapon = lmg); Item(LootKind.Ammo, l => { l.ammoType = lmg.ammoType; l.amount = 150; });
+            Item(LootKind.Vest, l => l.level = 3); Item(LootKind.Helmet, l => l.level = 3); Item(LootKind.Backpack, l => l.level = 3);
+            Item(LootKind.Scope, l => l.level = 3); Item(LootKind.Medkit, l => { }); Item(LootKind.Syringe, l => { }); Item(LootKind.Medkit, l => { });
+            inv.SetActive(false);
+            root.SetActive(false);
+            return root;
+        }
+
         // ---------- dense neighbourhoods ----------
         static void BuildTowns(Terrain terrain, Transform parent)
         {

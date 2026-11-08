@@ -167,9 +167,10 @@ namespace Kryvon.EditorTools
             terrain.drawInstanced = true;
 
             AssetDatabase.StartAssetEditing();
-            try { BuildTowns(terrain, world); BuildPetra(terrain, world); BuildJerash(terrain, world); foreach (var (sc, sr) in Sites) blocked.Add(new Rect(sc.x - sr, sc.y - sr, sr * 2, sr * 2)); ScatterHouses(terrain, world); } finally { AssetDatabase.StopAssetEditing(); }
+            try { BuildTowns(terrain, world); BuildPetra(terrain, world); BuildJerash(terrain, world); foreach (var (sc, sr) in Sites) blocked.Add(new Rect(sc.x - sr, sc.y - sr, sr * 2, sr * 2)); lootSpotsUsed.Clear(); ScatterHouses(terrain, world); PlaceFlareGuns(); } finally { AssetDatabase.StopAssetEditing(); }
             //                            // enterable houses first, so grass/trees keep out of them
             GrassField(terrain, am, A, world);
+            PlaceVehicles(world);
 
             // ---------- dressing ----------
             float Y(float x, float z) => terrain.SampleHeight(new Vector3(x, 0, z)) - Base;

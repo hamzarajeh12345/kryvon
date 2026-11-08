@@ -10,7 +10,7 @@ namespace Kryvon.EditorTools
     public static partial class KryvonWorld
     {
         const string Root = "Assets/_Kryvon";
-        const float Size = 600f, HeightScale = 40f, Base = 6f;   // the town sits at y=0, which is Base metres above the terrain floor
+        const float Size = 900f, HeightScale = 40f, Base = 6f;   // the town sits at y=0, which is Base metres above the terrain floor
         static System.Random rng;
         static float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
 
@@ -104,6 +104,11 @@ namespace Kryvon.EditorTools
                 float town = Mathf.Max(Mathf.Abs(wx) / 95f, Mathf.Abs(wz) / 48f);          // 0 in the middle, 1 at the town edge
                 float road = Mathf.Clamp01((Mathf.Abs(wz) - 7f) / 25f);                      // the road keeps going flat along X
                 float flat = Mathf.Min(Mathf.Clamp01((town - 1.3f) * 1.2f), road);
+                foreach (var tc in Towns)
+                {
+                    float tt = Mathf.Max(Mathf.Abs(wx - tc.x) / TownHalf.x, Mathf.Abs(wz - tc.y) / TownHalf.y);
+                    flat = Mathf.Min(flat, Mathf.Clamp01((tt - 1.05f) * 2.5f));
+                }
                 h[j, i] = (Base + hills * flat) / HeightScale;
             }
             td.SetHeights(0, 0, h);
@@ -160,7 +165,9 @@ namespace Kryvon.EditorTools
             terrain.detailObjectDistance = 200f; terrain.detailObjectDensity = 1f; terrain.heightmapPixelError = 4; terrain.basemapDistance = 2000;
             terrain.drawInstanced = true;
 
-            ScatterHouses(terrain, world);                            // enterable houses first, so grass/trees keep out of them
+            AssetDatabase.StartAssetEditing();
+            try { BuildTowns(terrain, world); ScatterHouses(terrain, world); } finally { AssetDatabase.StopAssetEditing(); }
+            //                            // enterable houses first, so grass/trees keep out of them
             GrassField(terrain, am, A, world);
 
             // ---------- dressing ----------

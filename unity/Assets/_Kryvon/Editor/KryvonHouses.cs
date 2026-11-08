@@ -33,6 +33,7 @@ namespace Kryvon.EditorTools
         {
             public readonly Dictionary<Material, (List<Vector3> v, List<Vector3> n, List<Vector2> uv, List<int> t)> parts = new();
             public readonly List<(Vector3 c, Vector3 s)> colliders = new();
+            public readonly List<(Vector3 c, char axis, float w, float h)> doors = new(), windows = new();
             public void Box(Material m, Vector3 c, Vector3 s, bool collide = true)
             {
                 if (s.x <= 0.01f || s.y <= 0.01f || s.z <= 0.01f) return;
@@ -72,6 +73,7 @@ namespace Kryvon.EditorTools
                 }
                 var cols = new GameObject("Colliders"); cols.transform.SetParent(go.transform, false);
                 foreach (var (c, s) in colliders) { var bc = cols.AddComponent<BoxCollider>(); bc.center = c; bc.size = s; }
+                Specials(this, go.transform);
                 return go;
             }
         }
@@ -91,6 +93,8 @@ namespace Kryvon.EditorTools
             foreach (var h in holes)
             {
                 float s0 = h.at - h.w / 2, s1 = h.at + h.w / 2;
+                var ctr = axis == 'x' ? new Vector3(h.at, y0 + (h.lo + h.hi) / 2, fixedC) : new Vector3(fixedC, y0 + (h.lo + h.hi) / 2, h.at);
+                if (h.lo <= 0.01f) b.doors.Add((ctr, axis, h.w, h.hi - h.lo)); else b.windows.Add((ctr, axis, h.w, h.hi - h.lo));
                 Seg(cur, s0, y0, y1);
                 Seg(s0, s1, y0, y0 + h.lo);          // under a window
                 Seg(s0, s1, y0 + h.hi, y1);          // lintel
@@ -142,6 +146,24 @@ namespace Kryvon.EditorTools
                     }
                     WallLine(b, ext, axis, fc, -len / 2, len / 2, y0, y1, holes);
                 }
+                // window sills, balconies and AC units on the street side
+                var trim = PBRMat("M_Trim", "concrete_floor_02", new Color(0.93f, 0.9f, 0.84f), 1.5f);
+                var rail = PBRMat("M_Rail", "concrete_floor_02", new Color(0.18f, 0.18f, 0.19f), 1f);
+                int nw = Mathf.Max(1, Mathf.FloorToInt(w / 3.2f));
+                for (int k = 0; k < nw; k++)
+                {
+                    float at = -w / 2 + (k + 0.5f) * w / nw;
+                    if (!(f == 0 && k == nw / 2)) b.Box(trim, new Vector3(at, y0 + 0.88f, -hz - 0.08f), new Vector3(1.45f, 0.08f, 0.28f), false);
+                    if (f > 0 && k % 2 == 1 && rng.NextDouble() < 0.7)
+                    {
+                        b.Box(trim, new Vector3(at, y0 - 0.1f, -hz - 0.65f), new Vector3(2.6f, 0.18f, 1.3f));                     // balcony slab
+                        b.Box(rail, new Vector3(at, y0 + 0.5f, -hz - 1.27f), new Vector3(2.6f, 1.0f, 0.06f));                    // railing
+                        b.Box(rail, new Vector3(at - 1.27f, y0 + 0.5f, -hz - 0.65f), new Vector3(0.06f, 1.0f, 1.3f));
+                        b.Box(rail, new Vector3(at + 1.27f, y0 + 0.5f, -hz - 0.65f), new Vector3(0.06f, 1.0f, 1.3f));
+                    }
+                }
+                if (f > 0 && rng.NextDouble() < 0.6) b.Box(trim, new Vector3(hx + 0.3f, y0 + 1.9f, R(-hz + 1.5f, hz - 1.5f)), new Vector3(0.5f, 0.6f, 0.85f), false);  // AC unit
+                if (f > 0) b.Box(trim, new Vector3(0, y0 - 0.05f, -hz - 0.1f), new Vector3(w + 0.2f, 0.16f, 0.22f), false);                          // floor band
                 // interior walls with door gaps -> 3-4 rooms per floor
                 WallLine(b, inner, 'z', midX, -hz + Wall, hz - Wall, y0, y1, new() { (midZ - d * 0.22f, 1.0f, 0f, 2.15f), (midZ + d * 0.25f, 1.0f, 0f, 2.15f) });
                 WallLine(b, inner, 'x', midZ, -hx + Wall, midX - Wall / 2, y0, y1, new() { ((-hx + midX) / 2, 1.0f, 0f, 2.15f) });
@@ -178,7 +200,7 @@ namespace Kryvon.EditorTools
         }
 
         // ---------- loot ----------
-        static readonly List<WeaponData> lootGuns = new();
+        public static readonly List<WeaponData> lootGuns = new();
         static WeaponData Gun(string file, string id, string en, string ar, WeaponClass cls, AmmoType ammo, float dmg, float rpm, int mag, float range, FireMode[] modes, ScopeType scope, string sound)
         {
             var path = $"{Root}/Data/{file}.asset";
@@ -191,7 +213,7 @@ namespace Kryvon.EditorTools
             w.drySound = AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/Audio/ui_dry_fire.wav");
             EditorUtility.SetDirty(w); return w;
         }
-        static void EnsureLootGuns()
+        public static void EnsureLootGuns()
         {
             lootGuns.Clear();
             var auto = new[] { FireMode.Auto, FireMode.Single }; var single = new[] { FireMode.Single };
@@ -233,10 +255,14 @@ namespace Kryvon.EditorTools
                     LootKind.Vest => (new Color(0.22f, 0.25f, 0.2f), new Vector3(0.5f, 0.12f, 0.58f)),
                     _ => (new Color(0.24f, 0.26f, 0.22f), new Vector3(0.32f, 0.2f, 0.36f)),
                 };
-                g = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(g.GetComponent<Collider>());
-                g.name = k.ToString(); g.transform.SetParent(parent, false);
-                g.transform.position = p + Vector3.up * size.y / 2; g.transform.localScale = size; g.transform.rotation = Quaternion.Euler(0, R(0, 360), 0);
-                g.GetComponent<Renderer>().sharedMaterial = PBRMat("M_Loot" + k, "concrete_floor_02", col, 0.6f);
+                if (k == LootKind.Vest || k == LootKind.Helmet) g = ArmorModel(k, parent, p);
+                else
+                {
+                    g = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(g.GetComponent<Collider>());
+                    g.name = k.ToString(); g.transform.SetParent(parent, false);
+                    g.transform.position = p + Vector3.up * size.y / 2; g.transform.localScale = size; g.transform.rotation = Quaternion.Euler(0, R(0, 360), 0);
+                    g.GetComponent<Renderer>().sharedMaterial = PBRMat("M_Loot" + k, "concrete_floor_02", col, 0.6f);
+                }
                 if (k == LootKind.Medkit)
                 {
                     var cross = GameObject.CreatePrimitive(PrimitiveType.Cube); Object.DestroyImmediate(cross.GetComponent<Collider>());

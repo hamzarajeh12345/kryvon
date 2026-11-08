@@ -256,7 +256,13 @@ namespace Kryvon
 
             var box = hit.collider.GetComponent<HitBox>();
             Health target = box != null ? box.owner : hit.collider.GetComponentInParent<Health>();
-            if (target == null || target == self) return;
+            if (target == null)   // glass, doors, barrels … anything breakable
+            {
+                var thing = hit.collider.GetComponentInParent<IDamageable>();
+                thing?.TakeDamage(new DamageInfo { Amount = d.damage, Source = gameObject, Cause = d.displayName });
+                return;
+            }
+            if (target == self) return;
             if (self != null && target.teamId == self.teamId) return;   // no friendly fire
 
             float t = hit.distance / d.range;

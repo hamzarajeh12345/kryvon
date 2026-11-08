@@ -191,6 +191,9 @@ namespace Kryvon.EditorTools
             else { Animate(model, BuildController(PlayerCharacter)); AttachGun(model, "w_ar", 0.95f); }
             player.AddComponent<PlayerAnimatorBridge>();
 
+            player.tag = "Player";
+            KryvonWorld.MakeGrave(player, 8f);
+            new GameObject("KillFeed").AddComponent<KryvonKillFeed>();
             var picker = player.AddComponent<KryvonLootPicker>(); Set(picker, "pickupSound", AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactSoft_heavy_000.ogg"));
             var fs = player.AddComponent<KryvonFootsteps>();
             Object[] K(string prefix, string fallback) { var k = Enumerable.Range(0, 5).Select(i => (Object)AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/{prefix}_{i:000}.ogg")).Where(x => x != null).ToArray(); return k.Length > 0 ? k : Enumerable.Range(0, 6).Select(i => (Object)A($"{fallback}_{i}")).ToArray(); }
@@ -224,7 +227,7 @@ namespace Kryvon.EditorTools
                     hd.AddComponent<SphereCollider>().radius = 0.14f;
                     var hh = hd.AddComponent<HitBox>(); hh.owner = h; hh.isHead = true;
                     var rc = BuildController(t.name); if (rc != null) Animate(t.gameObject, rc);
-                    t.gameObject.AddComponent<TargetRespawn>();
+                    KryvonWorld.MakeGrave(t.gameObject, 30f);
                 }
             }
 

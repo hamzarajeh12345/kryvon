@@ -21,12 +21,12 @@ namespace Kryvon
 
         public string Describe() => kind switch
         {
-            LootKind.Weapon => weapon ? $"{weapon.arabicName} · {weapon.displayName}" : "سلاح",
-            LootKind.Ammo => $"ذخيرة {ammoType} ×{amount}",
-            LootKind.Medkit => "شنطة إسعاف",
-            LootKind.Bandage => $"شاش ×{amount}",
-            LootKind.Vest => $"درع مستوى {level}",
-            LootKind.Helmet => $"خوذة مستوى {level}",
+            LootKind.Weapon => weapon ? weapon.displayName : "Weapon",
+            LootKind.Ammo => $"Ammo {ammoType} x{amount}",
+            LootKind.Medkit => "First-aid kit",
+            LootKind.Bandage => $"Bandages x{amount}",
+            LootKind.Vest => $"Vest Lv.{level}",
+            LootKind.Helmet => $"Helmet Lv.{level}",
             _ => label,
         };
 

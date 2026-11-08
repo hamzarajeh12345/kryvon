@@ -48,7 +48,7 @@ namespace Kryvon
                     if (GUI.Button(new Rect(r.x + 20, r.y + 50 + i * 44, r.width - 40, 38), items[i].Describe(), btn) && openBox.Take(i, gameObject)) { Play(); break; }
                 return;
             }
-            string hint = door ? (door.IsOpen ? "سكّر الباب" : "افتح الباب") : box ? "افتح صندوق " + box.owner : loot ? loot.Describe() : null;
+            string hint = door ? (door.IsOpen ? "Close door" : "Open door") : box ? "Open " + box.owner + "'s crate" : loot ? loot.Describe() : null;
             if (hint == null) return;
             GUI.Box(new Rect(Screen.width / 2f + 60, Screen.height / 2f + 40, 360, 40), "[F]  " + hint, style);
         }

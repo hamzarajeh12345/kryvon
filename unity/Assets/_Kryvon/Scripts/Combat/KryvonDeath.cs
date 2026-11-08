@@ -35,8 +35,8 @@ namespace Kryvon
             SetDead(true);
             KryvonFX.Blood(transform.position + Vector3.up * 1.2f, info.Headshot ? 40 : 24);
             if (deathSound) AudioSource.PlayClipAtPoint(deathSound, transform.position, 0.9f);
-            string killer = info.Source ? (info.Source.CompareTag("Player") ? "أنت" : info.Source.name) : info.Cause;
-            KryvonKillFeed.Push($"{killer}  ⟶  {name}{(info.Headshot ? "  (راس)" : "")}", info.Source && info.Source.CompareTag("Player"));
+            string killer = info.Source ? (info.Source.CompareTag("Player") ? "You" : info.Source.name) : info.Cause;
+            KryvonKillFeed.Push($"{killer}  ->  {name}{(info.Headshot ? "  [HEADSHOT]" : "")}", info.Source && info.Source.CompareTag("Player"));
             hit = GetComponentsInChildren<Collider>();
             foreach (var c in hit) if (c.GetComponent<HitBox>()) c.enabled = false;
             yield return new WaitForSeconds(graveDelay);

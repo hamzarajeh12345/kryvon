@@ -109,6 +109,7 @@ namespace Kryvon.EditorTools
                     float tt = Mathf.Max(Mathf.Abs(wx - tc.x) / TownHalf.x, Mathf.Abs(wz - tc.y) / TownHalf.y);
                     flat = Mathf.Min(flat, Mathf.Clamp01((tt - 1.05f) * 2.5f));
                 }
+                foreach (var (sc, sr) in Sites) flat = Mathf.Min(flat, Mathf.Clamp01((Vector2.Distance(new Vector2(wx, wz), sc) / sr - 1.0f) * 2.5f));
                 h[j, i] = (Base + hills * flat) / HeightScale;
             }
             td.SetHeights(0, 0, h);
@@ -166,7 +167,7 @@ namespace Kryvon.EditorTools
             terrain.drawInstanced = true;
 
             AssetDatabase.StartAssetEditing();
-            try { BuildTowns(terrain, world); ScatterHouses(terrain, world); } finally { AssetDatabase.StopAssetEditing(); }
+            try { BuildTowns(terrain, world); BuildPetra(terrain, world); BuildJerash(terrain, world); foreach (var (sc, sr) in Sites) blocked.Add(new Rect(sc.x - sr, sc.y - sr, sr * 2, sr * 2)); ScatterHouses(terrain, world); } finally { AssetDatabase.StopAssetEditing(); }
             //                            // enterable houses first, so grass/trees keep out of them
             GrassField(terrain, am, A, world);
 

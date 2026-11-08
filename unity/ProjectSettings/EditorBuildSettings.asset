@@ -6,10 +6,10 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/_Kryvon/Scenes/Lobby.unity
+    guid: 460c813fba5898f40b946c44b8d115a4
+  - enabled: 1
     path: Assets/_Kryvon/Scenes/Play.unity
     guid: 16e79054683638944a37471cc8d044d8
-  - enabled: 1
-    path: Assets/_Kryvon/Scenes/Test.unity
-    guid: 6b4eced313cc8fc4a81ae887205bde95
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}

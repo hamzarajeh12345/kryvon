@@ -22,7 +22,7 @@ namespace Kryvon
         void Awake() => inst = this;
         void Start()
         {
-            var w = FindFirstObjectByType<WeaponController>();
+            var w = FindAnyObjectByType<WeaponController>();
             if (w) w.OnHit += (_, _, head) => Hit(head);
         }
 

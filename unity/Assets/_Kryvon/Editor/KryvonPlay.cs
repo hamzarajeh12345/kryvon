@@ -179,16 +179,25 @@ namespace Kryvon.EditorTools
 
             // the character model, animated
             var squad = GameObject.Find("Squad");
-            var model = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Models/Characters/{PlayerCharacter}.glb"), player.transform);
-            FitHeight(model, 1.8f);
-            var hav = KryvonHumanoid.Available ? KryvonHumanoid.BuildAvatar(PlayerCharacter) : null;
-            if (hav != null)
+            // every playable hero is built under the player; KryvonHeroSwitch keeps the one picked in the lobby
+            var heroRoots = new System.Collections.Generic.List<GameObject>(); var humanCtrl = KryvonHumanoid.Available ? KryvonHumanoid.BuildController() : null;
+            foreach (var hero in KryvonHeroSwitch.Heroes)
             {
-                var an = model.GetComponentInChildren<Animator>() ?? model.AddComponent<Animator>();
-                an.avatar = hav; an.runtimeAnimatorController = KryvonHumanoid.BuildController(); an.applyRootMotion = false; an.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
-                KryvonHumanoid.AttachGunAimed(model, an, "w_ar", 0.95f);
+                var asset = AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Models/Characters/{hero}.glb"); if (asset == null) continue;
+                var model = (GameObject)PrefabUtility.InstantiatePrefab(asset, player.transform); model.name = hero;
+                FitHeight(model, 1.8f);
+                var hav = humanCtrl != null ? KryvonHumanoid.BuildAvatar(hero) : null;
+                bool bakedGun = hero == "hamza";                       // generated holding his rifle
+                if (hav != null)
+                {
+                    var an = model.GetComponentInChildren<Animator>() ?? model.AddComponent<Animator>();
+                    an.avatar = hav; an.runtimeAnimatorController = humanCtrl; an.applyRootMotion = false; an.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                    if (!bakedGun) KryvonHumanoid.AttachGunAimed(model, an, "w_ar", 0.95f);
+                }
+                else { Animate(model, BuildController(hero)); if (!bakedGun) AttachGun(model, "w_ar", 0.95f); }
+                heroRoots.Add(model);
             }
-            else { Animate(model, BuildController(PlayerCharacter)); AttachGun(model, "w_ar", 0.95f); }
+            var sw = player.AddComponent<KryvonHeroSwitch>(); Set(sw, "models", heroRoots.Select(h => (Object)h).ToArray());
             player.AddComponent<PlayerAnimatorBridge>();
 
             player.tag = "Player";

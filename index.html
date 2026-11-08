@@ -313,12 +313,20 @@ body.knocked #dmgflash{opacity:.35!important}
 #queue{position:fixed;inset:0;z-index:25;display:none;flex-direction:column;gap:14px;align-items:center;justify-content:center;background:rgba(10,8,6,.88);direction:rtl;text-align:center}
 .qsp{width:46px;height:46px;border:4px solid #3a2f22;border-top-color:#ffc531;border-radius:50%;animation:spin 1s linear infinite}
 #queue b{font-size:42px;color:var(--gold);font-variant-numeric:tabular-nums}#queue small{color:var(--dim);max-width:340px}
+  /* start screen: the key art, with its painted loading bar filling up (bar sits at 34.9%–65.2% x, ~96.4% y of the art) */
+  #splash{position:fixed;inset:0;z-index:200;background:#0b0b0d;display:none;align-items:center;justify-content:center;cursor:pointer;transition:opacity .6s}
+  #splash.on{display:flex}
+  #splash.out{opacity:0}
+  #splash .art{position:relative;width:min(100vw,calc(100vh*1376/768));aspect-ratio:1376/768}
+  #splash img{width:100%;height:100%;display:block;object-fit:cover}
+  #splashFill{position:absolute;left:35.1%;top:96.6%;height:1.1%;width:0;max-width:30%;border-radius:4px;background:linear-gradient(90deg,#b8862e,#f3cf6b);box-shadow:0 0 10px #f3cf6b88;transition:width .25s linear}
 </style>
 <script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.min.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
 </head>
 <body>
 <canvas id="game"></canvas>
 
+<div id="splash"><div class="art"><img id="splashImg" alt="KRAYVON"><i id="splashFill"></i></div></div>
 <div id="auth" class="screen"></div>
 <div id="lobby" class="screen"></div>
 <div id="loading" class="screen" style="display:flex"><div class="sp"></div><span id="loadmsg">…</span></div>

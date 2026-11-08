@@ -126,7 +126,26 @@ export class UI {
   }
   get map() { return MAPS.find(m => m.id === this.mapId); }
 
+  // the key-art start screen (assets/ui/splash.jpg); skipped if the image is missing or on ?autostart
+  splash() {
+    return new Promise(done => {
+      const el = document.getElementById('splash'), img = document.getElementById('splashImg'), fill = document.getElementById('splashFill');
+      if (!el || new URLSearchParams(location.search).has('autostart')) return done();
+      let finished = false;
+      const finish = () => { if (finished) return; finished = true; el.classList.add('out'); setTimeout(() => { el.classList.remove('on', 'out'); }, 600); done(); };
+      img.onerror = () => done();
+      img.onload = () => {
+        el.classList.add('on'); el.onclick = finish;
+        const t0 = performance.now(), dur = 3500;
+        const tick = () => { if (finished) return; const k = Math.min(1, (performance.now() - t0) / dur); fill.style.width = (k * 30) + '%'; k < 1 ? requestAnimationFrame(tick) : setTimeout(finish, 250); };
+        tick();
+      };
+      img.src = 'assets/ui/splash.jpg';
+    });
+  }
+
   async boot() {
+    const splashDone = this.splash();
     this.show('loading', 'جاري الاتصال…');
     const up = await account.serverUp();
     this.serverUp = up;
@@ -134,6 +153,7 @@ export class UI {
     const qs = new URLSearchParams(location.search);
     if (qs.get('map') && MAPS.some(m => m.id === qs.get('map'))) this.mapId = qs.get('map');
     if (qs.get('mode') && MODES.some(m => m.id === qs.get('mode'))) this.modeId = qs.get('mode');
+    await splashDone;
     if (u) {
       this.onUser();
       if (qs.has('autostart')) { history.replaceState(null, '', location.pathname); return this.play(); }

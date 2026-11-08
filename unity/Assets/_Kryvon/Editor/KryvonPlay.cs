@@ -181,6 +181,7 @@ namespace Kryvon.EditorTools
             var model = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Models/Characters/{PlayerCharacter}.glb"), player.transform);
             FitHeight(model, 1.8f);
             Animate(model, BuildController(PlayerCharacter));
+            AttachGun(model, "w_ar", 0.95f);
             player.AddComponent<PlayerAnimatorBridge>();
 
             var fs = player.AddComponent<KryvonFootsteps>();
@@ -239,6 +240,27 @@ namespace Kryvon.EditorTools
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(path, true), new EditorBuildSettingsScene(Root + "/Scenes/Test.unity", true) };
             AssetDatabase.SaveAssets();
             Debug.Log("KRYVON: play scene ready – press Play");
+        }
+
+        // a real rifle in the right hand (for characters generated with empty hands); placed in the bind pose, then parented to the hand bone
+        public static GameObject AttachGun(GameObject character, string gun, float length)
+        {
+            var hand = character.GetComponentsInChildren<Transform>().FirstOrDefault(t => t.name == "RightHand" || t.name.EndsWith("RightHand"));
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Models/Weapons/{gun}.glb");
+            if (hand == null || src == null) { Debug.LogWarning("KRYVON: no RightHand bone or gun model"); return null; }
+            var g = (GameObject)PrefabUtility.InstantiatePrefab(src);
+            g.transform.localScale = Vector3.one;
+            var rs = g.GetComponentsInChildren<Renderer>(); var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+            g.transform.localScale = Vector3.one * (length / Mathf.Max(0.01f, b.size.z));
+            b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+            var pivot = new GameObject("Gun_" + gun); g.transform.SetParent(pivot.transform, true);
+            // grip sits ~35% from the stock end; model nose is +Z
+            g.transform.position -= new Vector3(b.center.x, b.center.y, b.min.z + b.size.z * 0.35f);
+            var root = character.transform;
+            pivot.transform.position = hand.position + root.forward * 0.02f + root.up * 0.02f;
+            pivot.transform.rotation = Quaternion.LookRotation(root.forward, root.up) * Quaternion.Euler(8f, 0, 0);
+            pivot.transform.SetParent(hand, true);
+            return pivot;
         }
 
         static void FitHeight(GameObject go, float h)

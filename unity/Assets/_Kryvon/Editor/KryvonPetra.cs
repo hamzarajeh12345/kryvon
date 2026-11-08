@@ -91,7 +91,7 @@ namespace Kryvon.EditorTools
             var rose = new Color(1f, 0.72f, 0.6f);
             var cliff = PBRMat("M_PetraCliff", "cliff_side", new Color(1f, 0.66f, 0.55f), 14f, 1.8f);
             cliff.SetFloat("_Cull", 0); cliff.doubleSidedGI = true;   // rock walls seen from both sides
-            var carve = PBRMat("M_PetraCarve", "sandstone_blocks_08", new Color(1f, 0.74f, 0.62f), 3f, 0.8f);
+            var carve = PBRMat("M_PetraCarve", "cliff_side", new Color(1f, 0.66f, 0.54f), 6f, 0.6f);
             var shade = PBRMat("M_PetraDoor", "rock_face_03", new Color(0.18f, 0.12f, 0.1f), 2f);
             var sand = PBRMat("M_PetraSand", "coast_sand_01", new Color(1f, 0.8f, 0.68f), 5f);
             var root = new GameObject("Petra").transform; root.SetParent(parent, false);
@@ -102,7 +102,7 @@ namespace Kryvon.EditorTools
             Vector3 Nn(float x, float z) => root.TransformDirection(new Vector3(x, 0, z)).normalized;
 
             // plaza floor
-            var floor = new Builder(); floor.Box(sand, new Vector3(0, -0.1f, -25), new Vector3(52, 0.2f, 56)); floor.Box(sand, new Vector3(0, -0.1f, -75), new Vector3(10, 0.2f, 50));
+            var floor = new Builder(); floor.Box(sand, new Vector3(0, 0.0f, -25), new Vector3(52, 0.2f, 56)); floor.Box(sand, new Vector3(0, 0.0f, -84), new Vector3(14, 0.2f, 66));
             int mid = 20000; floor.Build("PlazaFloor", root, root.position, root.eulerAngles.y, ref mid);
 
             // canyon: back wall (behind the façade), side walls, and the Siq leading in
@@ -151,7 +151,6 @@ namespace Kryvon.EditorTools
                 Pediment(f, new Vector3(sd * 6.0f, 29.5f, 0.0f), 7.2f, 2.2f, 2.2f, carve, "half" + sd, true, sd);
             }
             // weathering: dark streaks down the cliff above the façade
-            for (int i = 0; i < 9; i++) P(PrimitiveType.Cube, root, new Vector3(-12 + i * 3 + R(-1, 1), 40 + R(-3, 3), 2.3f), new Vector3(R(0.3f, 0.9f), R(8, 16), 0.1f), shade, default, false);
             Debug.Log("KRYVON: Petra built");
         }
 

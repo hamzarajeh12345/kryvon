@@ -25,3 +25,6 @@ unity/.vs/
 /unity/Assets/_Kryvon/Animations/
 /unity/Assets/_Kryvon/Animations.meta
 /unity/VideoFrames/
+/unity/Assets/_Kryvon/Settings/Grass_*
+/unity/Assets/_Kryvon/Settings/Outskirts.asset*
+/unity/Assets/_Kryvon/Models/Props/

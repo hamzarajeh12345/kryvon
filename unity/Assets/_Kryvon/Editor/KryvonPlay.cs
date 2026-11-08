@@ -138,6 +138,7 @@ namespace Kryvon.EditorTools
         {
             if (A("gun_ar") == null) KryvonAudioGen.GenerateAll();
             KryvonShowcase.Build();                                   // street, lights, sky, post-fx, squad, camera
+            KryvonWorld.Dress();                                      // terrain, grass, trees, barriers, wrecks, hangars
             var scene = EditorSceneManager.GetActiveScene();
 
             foreach (var g in new[] { "Buildings", "Vehicles" })
@@ -272,12 +273,26 @@ namespace Kryvon.EditorTools
             var p = go.transform.parent; go.transform.position += new Vector3(p.position.x - b.center.x, p.position.y - b.min.y, p.position.z - b.center.z);
         }
 
+        public static void CaptureOutskirts()
+        {
+            var cam = Camera.main; var dir = Directory.GetCurrentDirectory();
+            var ter = Terrain.activeTerrain;
+            float G(float x, float z) => ter ? ter.SampleHeight(new Vector3(x, 0, z)) + ter.transform.position.y : 0;
+            Vector3 P(float x, float h, float z) => new Vector3(x, G(x, z) + h, z);
+            var shots = new[] { (P(-110, 2.2f, -12), P(-150, 1.5f, 10)), (P(120, 2.5f, 25), P(160, 1.5f, 70)),
+                                (P(-30, 0.6f, -60), P(-45, 0.3f, -85)), (P(70, 45, -170), new Vector3(0, 0, 0)) };
+            float fov = cam.fieldOfView; cam.fieldOfView = 60;
+            for (int i = 0; i < shots.Length; i++) { cam.transform.position = shots[i].Item1; cam.transform.LookAt(shots[i].Item2); KryvonShowcase.Capture(Path.Combine(dir, $"World{i + 1}.png")); }
+            cam.fieldOfView = fov;
+        }
+
         public static void BuildAndCapture()
         {
             Build();
             var cam = Camera.main; var p = GameObject.Find("Player").transform;
             cam.transform.position = p.position + new Vector3(0.7f, 1.75f, -3.0f); cam.transform.LookAt(p.position + new Vector3(0.2f, 1.45f, 4f));
             KryvonShowcase.Capture(Path.Combine(Directory.GetCurrentDirectory(), "Play.png"));
+            CaptureOutskirts();
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
         }
     }

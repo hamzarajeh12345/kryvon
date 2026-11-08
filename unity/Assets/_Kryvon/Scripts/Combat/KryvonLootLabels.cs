@@ -10,7 +10,7 @@ namespace Kryvon
         GUIStyle big, small, tag; Texture2D white;
         static string Icon(LootKind k) => k switch
         {
-            LootKind.Weapon => "▲", LootKind.Ammo => "■", LootKind.Medkit or LootKind.Bandage or LootKind.Syringe or LootKind.Drink => "✚",
+            LootKind.Weapon => "▲", LootKind.Ammo => "■", LootKind.Medkit or LootKind.Bandage or LootKind.Syringe or LootKind.Drink or LootKind.FirstAid or LootKind.Painkiller => "✚",
             LootKind.Vest or LootKind.Helmet => "◆", LootKind.Backpack => "▣", LootKind.Grenade => "●", LootKind.Scope => "◎", LootKind.FlareGun => "✸", _ => "•",
         };
 
@@ -37,7 +37,7 @@ namespace Kryvon
                 var p = l.transform.position + Vector3.up * 0.35f;
                 var sp = cam.WorldToScreenPoint(p); if (sp.z <= 0) continue;
                 float dist = Vector3.Distance(cam.transform.position, p);
-                var c = KryvonLoot.RarityColors[Mathf.Clamp(l.rarity, 0, 4)];
+                var c = l.kind == LootKind.Ammo ? KryvonLoot.AmmoColor(l.ammoType) : KryvonLoot.RarityColors[Mathf.Clamp(l.rarity, 0, 4)];
                 var pos = new Vector2(sp.x, Screen.height - sp.y);
                 if (l == aimed)
                 {

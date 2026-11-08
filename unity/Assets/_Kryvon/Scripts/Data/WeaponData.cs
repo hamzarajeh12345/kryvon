@@ -25,6 +25,8 @@ namespace Kryvon
         public float limbMultiplier = 0.9f;
         [Tooltip("Pellets per shot (shotguns > 1).")]
         public int pellets = 1;
+        [Tooltip("Ignores vest and helmet (airdrop sniper).")]
+        public bool ignoresArmor;
         public float range = 350f;
         [Tooltip("Damage starts dropping after this fraction of the range, down to 60 % at max range.")]
         [Range(0f, 1f)] public float falloffStart = 0.6f;

@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 
 namespace Kryvon
 {
-    public class KryvonVehicle : MonoBehaviour
+    public class KryvonVehicle : MonoBehaviour, IDamageable
     {
         public static readonly List<KryvonVehicle> All = new();
         public string displayName = "Car";
@@ -14,6 +14,9 @@ namespace Kryvon
         [SerializeField] Vector3 seat = new(-0.4f, 0.55f, 0.2f);
         [SerializeField] bool lean;                 // motorcycles lean into turns
         [SerializeField] AudioClip engine, crash;
+        [SerializeField] float maxHp = 1000f;
+        [SerializeField, Range(0, 0.95f)] float bulletResist = 0f;   // Jawad: 0.8
+        public float Hp { get; private set; } = -1; public bool Wrecked { get; private set; }
         public float Speed { get; private set; }
         public GameObject Driver { get; private set; }
         AudioSource eng; float yaw, roll; Collider[] own; readonly RaycastHit[] hits = new RaycastHit[8];
@@ -22,15 +25,35 @@ namespace Kryvon
         void OnDisable() => All.Remove(this);
         void Awake()
         {
-            yaw = transform.eulerAngles.y; own = GetComponentsInChildren<Collider>();
+            yaw = transform.eulerAngles.y; own = GetComponentsInChildren<Collider>(); Hp = maxHp;
             if (engine) { eng = gameObject.AddComponent<AudioSource>(); eng.clip = engine; eng.loop = true; eng.spatialBlend = 1f; eng.volume = 0f; eng.minDistance = 4; eng.maxDistance = 80; eng.Play(); }
         }
 
         bool IsOwn(Collider c) { foreach (var o in own) if (o == c) return true; return Driver && c.transform.IsChildOf(Driver.transform); }
 
+        public void TakeDamage(DamageInfo info)
+        {
+            if (Wrecked) return;
+            Hp -= info.Amount * (1f - bulletResist);
+            if (Hp <= maxHp * 0.35f && Random.value < 0.3f) KryvonFX.Dust(transform.position + Vector3.up * 1.5f);
+            if (Hp <= 0) Explode(info);
+        }
+        void Explode(DamageInfo info)
+        {
+            Wrecked = true; Speed = 0;
+            var p = transform.position + Vector3.up;
+            KryvonFX.Fire(p);
+            if (crash) AudioSource.PlayClipAtPoint(crash, p, 1f);
+            var d = Driver; Exit();
+            if (d) { var h = d.GetComponent<Health>(); if (h) h.TakeDamage(new DamageInfo { Amount = 60, Source = info.Source, Cause = displayName + " explosion", IgnoreArmor = true }); }
+            foreach (var h in FindObjectsByType<Health>()) if (h.IsAlive && (h.transform.position - p).sqrMagnitude < 36f) h.TakeDamage(new DamageInfo { Amount = 70, Source = info.Source, Cause = displayName + " explosion" });
+            foreach (var r in GetComponentsInChildren<Renderer>()) foreach (var m in r.materials) { if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", new Color(0.12f, 0.1f, 0.09f)); }
+            if (eng) eng.Stop();
+        }
+
         public void Enter(GameObject player)
         {
-            if (Driver) return;
+            if (Driver || Wrecked) return;
             Driver = player;
             foreach (var b in new Behaviour[] { player.GetComponent<PlayerController>(), player.GetComponent<WeaponController>() }) if (b) b.enabled = false;
             var cc0 = player.GetComponent<CharacterController>(); if (cc0) cc0.enabled = false;
@@ -58,6 +81,7 @@ namespace Kryvon
 
         void Update()
         {
+            if (Wrecked) return;
             float throttle = 0, steer = 0; bool hand = false, boost = false;
             if (Driver)
             {

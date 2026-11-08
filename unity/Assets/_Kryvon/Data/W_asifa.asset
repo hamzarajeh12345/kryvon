@@ -1,0 +1,89 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4eff84dc5cd8134a98f49421ab18cfe, type: 3}
+  m_Name: W_asifa
+  m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
+  weaponId: asifa
+  displayName: Asifa
+  arabicName: Asifa
+  weaponClass: 1
+  ammoType: 2
+  damage: 34
+  headshotMultiplier: 2.1
+  limbMultiplier: 0.9
+  pellets: 1
+  ignoresArmor: 0
+  range: 130
+  falloffStart: 0.6
+  roundsPerMinute: 950
+  fireModes: 0200000000000000i
+  burstCount: 3
+  magazineSize: 32
+  reloadSeconds: 1.9
+  tacticalReloadSeconds: 1.615
+  adsSeconds: 0.18
+  drawSeconds: 0.45
+  hipSpread: 1.7
+  shoulderSpread: 0.93500006
+  adsSpread: 0.12
+  bloomPerShot: 0.12
+  bloomRecoveryPerSecond: 2.5
+  maxBloom: 1.5
+  movingMultiplier: 1.6
+  airborneMultiplier: 3
+  crouchMultiplier: 0.8
+  proneMultiplier: 0.6
+  recoilPattern:
+  - {x: -0.07671395, y: 0.35}
+  - {x: -0.032153387, y: 0.36225}
+  - {x: 0.045458443, y: 0.3745}
+  - {x: 0.096840486, y: 0.38674998}
+  - {x: 0.07637727, y: 0.399}
+  - {x: -0.008266624, y: 0.41125}
+  - {x: -0.09602785, y: 0.4235}
+  - {x: -0.11639034, y: 0.43575}
+  - {x: -0.045853373, y: 0.44799998}
+  - {x: 0.06816057, y: 0.46025}
+  - {x: 0.13868503, y: 0.4725}
+  - {x: 0.105540715, y: 0.4725}
+  - {x: -0.013969726, y: 0.4725}
+  - {x: -0.13226831, y: 0.4725}
+  - {x: -0.15561047, y: 0.4725}
+  - {x: -0.05822171, y: 0.4725}
+  - {x: 0.09205952, y: 0.4725}
+  - {x: 0.18068348, y: 0.4725}
+  - {x: 0.13369846, y: 0.4725}
+  - {x: -0.021075573, y: 0.4725}
+  - {x: -0.16924408, y: 0.4725}
+  - {x: -0.19434074, y: 0.4725}
+  - {x: -0.0692468, y: 0.4725}
+  - {x: 0.117136024, y: 0.4725}
+  - {x: 0.2228004, y: 0.4725}
+  - {x: 0.16082521, y: 0.4725}
+  - {x: -0.029579118, y: 0.4725}
+  - {x: -0.20692438, y: 0.4725}
+  - {x: -0.23254766, y: 0.4725}
+  - {x: -0.07891748, y: 0.4725}
+  recoilJitter: 0.08
+  adsRecoilMultiplier: 0.75
+  crouchRecoilMultiplier: 0.85
+  proneRecoilMultiplier: 0.65
+  recoilRecovery: 0.6
+  recoilResetSeconds: 0.35
+  defaultScope: 0
+  allowedScopes: 000000000100000002000000030000000400000005000000i
+  moveSpeedMultiplier: 1
+  viewPrefab: {fileID: 0}
+  shotSound: {fileID: 8300000, guid: 352cca633898adc4495d2a774441a631, type: 3}
+  suppressedShotSound: {fileID: 8300000, guid: 282d38ce8260ca543b7476ddc96e2759, type: 3}
+  reloadSound: {fileID: 8300000, guid: d816092b48175ce448da01ccbe9f1468, type: 3}
+  drySound: {fileID: 8300000, guid: c6853186b704ad34eb694407cfdc7b13, type: 3}

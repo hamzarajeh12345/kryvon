@@ -21,6 +21,7 @@ MonoBehaviour:
   headshotMultiplier: 2.5
   limbMultiplier: 0.9
   pellets: 1
+  ignoresArmor: 0
   range: 750
   falloffStart: 0.6
   roundsPerMinute: 48

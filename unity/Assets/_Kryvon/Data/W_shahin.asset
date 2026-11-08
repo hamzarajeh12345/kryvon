@@ -1,0 +1,89 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4eff84dc5cd8134a98f49421ab18cfe, type: 3}
+  m_Name: W_shahin
+  m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
+  weaponId: shahin
+  displayName: Shahin
+  arabicName: Shahin
+  weaponClass: 0
+  ammoType: 0
+  damage: 42
+  headshotMultiplier: 2.1
+  limbMultiplier: 0.9
+  pellets: 1
+  ignoresArmor: 0
+  range: 380
+  falloffStart: 0.6
+  roundsPerMinute: 700
+  fireModes: 0200000000000000i
+  burstCount: 3
+  magazineSize: 30
+  reloadSeconds: 2.3
+  tacticalReloadSeconds: 1.955
+  adsSeconds: 0.18
+  drawSeconds: 0.45
+  hipSpread: 1.7
+  shoulderSpread: 0.93500006
+  adsSpread: 0.12
+  bloomPerShot: 0.12
+  bloomRecoveryPerSecond: 2.5
+  maxBloom: 1.5
+  movingMultiplier: 1.6
+  airborneMultiplier: 3
+  crouchMultiplier: 0.8
+  proneMultiplier: 0.6
+  recoilPattern:
+  - {x: -0.01117662, y: 0.45}
+  - {x: 0.024872914, y: 0.46574998}
+  - {x: 0.045932997, y: 0.4815}
+  - {x: 0.0324855, y: 0.49725}
+  - {x: -0.009065012, y: 0.513}
+  - {x: -0.04838327, y: 0.52875}
+  - {x: -0.053321064, y: 0.5445}
+  - {x: -0.016057128, y: 0.56025}
+  - {x: 0.037892696, y: 0.576}
+  - {x: 0.066953726, y: 0.59174997}
+  - {x: 0.045520153, y: 0.60749996}
+  - {x: -0.013932649, y: 0.60749996}
+  - {x: -0.06745507, y: 0.60749996}
+  - {x: -0.07209405, y: 0.60749996}
+  - {x: -0.02025181, y: 0.60749996}
+  - {x: 0.051470887, y: 0.60749996}
+  - {x: 0.087981775, y: 0.60749996}
+  - {x: 0.058005508, y: 0.60749996}
+  - {x: -0.01948952, y: 0.60749996}
+  - {x: -0.086833194, y: 0.60749996}
+  - {x: -0.090557836, y: 0.60749996}
+  - {x: -0.023756545, y: 0.60749996}
+  - {x: 0.065596454, y: 0.60749996}
+  - {x: 0.10899932, y: 0.60749996}
+  - {x: 0.069930375, y: 0.60749996}
+  - {x: -0.025731899, y: 0.60749996}
+  - {x: -0.10650142, y: 0.60749996}
+  - {x: -0.10869655, y: 0.60749996}
+  - {x: -0.026567455, y: 0.60749996}
+  - {x: 0.08025816, y: 0.60749996}
+  recoilJitter: 0.055
+  adsRecoilMultiplier: 0.75
+  crouchRecoilMultiplier: 0.85
+  proneRecoilMultiplier: 0.65
+  recoilRecovery: 0.6
+  recoilResetSeconds: 0.35
+  defaultScope: 0
+  allowedScopes: 00000000010000000200000003000000040000000500000006000000i
+  moveSpeedMultiplier: 1
+  viewPrefab: {fileID: 0}
+  shotSound: {fileID: 8300000, guid: f17541810066bc745b9f03b6a5a591e8, type: 3}
+  suppressedShotSound: {fileID: 8300000, guid: 282d38ce8260ca543b7476ddc96e2759, type: 3}
+  reloadSound: {fileID: 8300000, guid: d816092b48175ce448da01ccbe9f1468, type: 3}
+  drySound: {fileID: 8300000, guid: c6853186b704ad34eb694407cfdc7b13, type: 3}

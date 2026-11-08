@@ -1,0 +1,89 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4eff84dc5cd8134a98f49421ab18cfe, type: 3}
+  m_Name: W_sahn28
+  m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
+  weaponId: sahn28
+  displayName: Sahn-28
+  arabicName: Sahn-28
+  weaponClass: 5
+  ammoType: 1
+  damage: 51
+  headshotMultiplier: 2.1
+  limbMultiplier: 0.9
+  pellets: 1
+  ignoresArmor: 0
+  range: 420
+  falloffStart: 0.6
+  roundsPerMinute: 550
+  fireModes: 0200000000000000i
+  burstCount: 3
+  magazineSize: 47
+  reloadSeconds: 5.5
+  tacticalReloadSeconds: 4.675
+  adsSeconds: 0.18
+  drawSeconds: 0.45
+  hipSpread: 1.7
+  shoulderSpread: 0.93500006
+  adsSpread: 0.12
+  bloomPerShot: 0.12
+  bloomRecoveryPerSecond: 2.5
+  maxBloom: 1.5
+  movingMultiplier: 1.6
+  airborneMultiplier: 3
+  crouchMultiplier: 0.8
+  proneMultiplier: 0.6
+  recoilPattern:
+  - {x: -0.02235324, y: 0.8}
+  - {x: 0.049745828, y: 0.828}
+  - {x: 0.091865994, y: 0.856}
+  - {x: 0.064971, y: 0.884}
+  - {x: -0.018130025, y: 0.912}
+  - {x: -0.09676654, y: 0.94}
+  - {x: -0.10664213, y: 0.968}
+  - {x: -0.032114256, y: 0.996}
+  - {x: 0.07578539, y: 1.024}
+  - {x: 0.13390745, y: 1.052}
+  - {x: 0.091040306, y: 1.08}
+  - {x: -0.027865298, y: 1.08}
+  - {x: -0.13491014, y: 1.08}
+  - {x: -0.1441881, y: 1.08}
+  - {x: -0.04050362, y: 1.08}
+  - {x: 0.102941774, y: 1.08}
+  - {x: 0.17596355, y: 1.08}
+  - {x: 0.116011016, y: 1.08}
+  - {x: -0.03897904, y: 1.08}
+  - {x: -0.17366639, y: 1.08}
+  - {x: -0.18111567, y: 1.08}
+  - {x: -0.04751309, y: 1.08}
+  - {x: 0.13119291, y: 1.08}
+  - {x: 0.21799864, y: 1.08}
+  - {x: 0.13986075, y: 1.08}
+  - {x: -0.051463798, y: 1.08}
+  - {x: -0.21300285, y: 1.08}
+  - {x: -0.2173931, y: 1.08}
+  - {x: -0.05313491, y: 1.08}
+  - {x: 0.16051632, y: 1.08}
+  recoilJitter: 0.08
+  adsRecoilMultiplier: 0.75
+  crouchRecoilMultiplier: 0.85
+  proneRecoilMultiplier: 0.65
+  recoilRecovery: 0.6
+  recoilResetSeconds: 0.35
+  defaultScope: 0
+  allowedScopes: 00000000010000000200000003000000040000000500000006000000i
+  moveSpeedMultiplier: 1
+  viewPrefab: {fileID: 0}
+  shotSound: {fileID: 8300000, guid: 6e222d694760ed546874c61b29da74ed, type: 3}
+  suppressedShotSound: {fileID: 8300000, guid: 282d38ce8260ca543b7476ddc96e2759, type: 3}
+  reloadSound: {fileID: 8300000, guid: d816092b48175ce448da01ccbe9f1468, type: 3}
+  drySound: {fileID: 8300000, guid: c6853186b704ad34eb694407cfdc7b13, type: 3}

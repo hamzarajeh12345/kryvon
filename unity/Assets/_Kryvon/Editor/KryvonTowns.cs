@@ -152,12 +152,12 @@ namespace Kryvon.EditorTools
         // ---------- vehicles: in every area two cars, a motorcycle and a buggy ----------
         static readonly Dictionary<string, (string name, float len, float wid, float speed, float accel, float turn, Vector3 seat, bool lean)> VehicleStats = new()
         {
-            { "v_pickup", ("Pickup", 5.0f, 2.0f, 30, 8.5f, 62, new Vector3(-0.42f, 0.75f, 0.35f), false) },
+            { "v_pickup", ("Shas Pickup", 5.0f, 2.0f, 30, 8.5f, 62, new Vector3(-0.42f, 0.75f, 0.35f), false) },
             { "v_sedan", ("Sedan", 4.5f, 1.85f, 34, 10, 68, new Vector3(-0.4f, 0.5f, -0.1f), false) },
             { "v_jeep", ("Jeep", 3.9f, 1.85f, 31, 11, 72, new Vector3(-0.42f, 0.6f, -0.2f), false) },
-            { "v_armored", ("Armored Car", 5.3f, 2.3f, 24, 6, 50, new Vector3(-0.5f, 0.95f, 0.3f), false) },
+            { "v_armored", ("Jawad Armored", 5.3f, 2.3f, 24, 6, 50, new Vector3(-0.5f, 0.95f, 0.3f), false) },
             { "v_minibus", ("Service Minibus", 5.6f, 2.05f, 25, 6.5f, 52, new Vector3(-0.5f, 0.8f, 1.6f), false) },
-            { "v_moto", ("Motorcycle", 2.1f, 0.8f, 38, 13, 95, new Vector3(0, 0.65f, -0.15f), true) },
+            { "v_moto", ("Tactical Dirt Bike", 2.1f, 0.8f, 38, 13, 95, new Vector3(0, 0.65f, -0.15f), true) },
             { "v_buggy", ("Buggy", 3.4f, 1.9f, 33, 12, 82, new Vector3(-0.38f, 0.45f, -0.1f), false) },
         };
         public static GameObject MakeVehicle(string model, Vector3 pos, float yaw, Transform parent)
@@ -172,6 +172,8 @@ namespace Kryvon.EditorTools
             so.FindProperty("length").floatValue = st.len; so.FindProperty("width").floatValue = st.wid; so.FindProperty("seat").vector3Value = st.seat; so.FindProperty("lean").boolValue = st.lean;
             so.FindProperty("engine").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/Audio/vehicle_engine.wav");
             so.FindProperty("crash").objectReferenceValue = K("impactMetal_heavy_000");
+            so.FindProperty("maxHp").floatValue = model == "v_armored" ? 2400 : model == "v_moto" ? 450 : model == "v_buggy" ? 700 : 1100;
+            so.FindProperty("bulletResist").floatValue = model == "v_armored" ? 0.8f : 0f;
             so.ApplyModifiedPropertiesWithoutUndo();
             return g;
         }
@@ -184,13 +186,17 @@ namespace Kryvon.EditorTools
             foreach (var (c, _) in Sites) areas.Add(c);
             var hs = GameObject.Find("Houses");
             if (hs) for (int i = 0; i < hs.transform.childCount && areas.Count < 12; i += 4) { var p = hs.transform.GetChild(i).position; areas.Add(new Vector2(p.x, p.z)); }
-            string[] cars = { "v_pickup", "v_sedan", "v_jeep", "v_pickup", "v_sedan", "v_minibus", "v_armored" };
+            string[] cars = { "v_pickup", "v_armored", "v_pickup" };
             int made = 0;
             foreach (var a in areas)
             {
                 var list = new List<string> { cars[rng.Next(cars.Length)], cars[rng.Next(cars.Length)], "v_moto", "v_buggy" };
+                // spawn chance by area: hot zones 90 %, towns 60 %, the countryside 30 %
+                int ai = areas.IndexOf(a); float chance = ai == 0 || ai > Towns.Length + Sites.Length ? 0.3f : ai <= Towns.Length ? 0.9f : 0.9f;
+                if (ai > Towns.Length + Sites.Length) chance = 0.3f; else if (ai == 0) chance = 0.6f;
                 foreach (var m in list)
                 {
+                    if (rng.NextDouble() > chance) continue;
                     var st = VehicleStats[m];
                     for (int t = 0; t < 60; t++)
                     {
@@ -239,8 +245,10 @@ namespace Kryvon.EditorTools
             light.type = LightType.Point; light.color = new Color(1f, 0.25f, 0.1f); light.range = 6; light.intensity = 3;
             var inv = new GameObject("Inventory"); inv.transform.SetParent(root.transform, false);
             void Item(LootKind k, System.Action<KryvonLoot> f) { var g = new GameObject(k.ToString()); g.transform.SetParent(inv.transform, false); var l = g.AddComponent<KryvonLoot>(); l.kind = k; f(l); }
-            var best = lootGuns.Find(w => w.weaponClass == WeaponClass.Sniper) ?? lootGuns[0];
-            var lmg = lootGuns.Find(w => w.weaponClass == WeaponClass.LMG) ?? lootGuns[0];
+            var drops = lootGuns.FindAll(w => ArmOf.TryGetValue(w, out var a) && a.airdrop);
+            var best = drops.Find(w => w.weaponClass == WeaponClass.Sniper) ?? lootGuns[0];
+            var lmg = drops.Count > 1 ? drops[rng.Next(drops.Count)] : lootGuns[0];
+            if (lmg == best) lmg = drops.Find(w => w != best) ?? lootGuns[0];
             Item(LootKind.Weapon, l => l.weapon = best); Item(LootKind.Ammo, l => { l.ammoType = best.ammoType; l.amount = 20; });
             Item(LootKind.Weapon, l => l.weapon = lmg); Item(LootKind.Ammo, l => { l.ammoType = lmg.ammoType; l.amount = 150; });
             Item(LootKind.Vest, l => l.level = 3); Item(LootKind.Helmet, l => l.level = 3); Item(LootKind.Backpack, l => l.level = 3);
@@ -282,6 +290,7 @@ namespace Kryvon.EditorTools
                     var b = new Builder();
                     var spots = HouseShape(b, w, d, floors, 1.2f);
                     var go = b.Build(tower ? "Tower" : "House", town, new Vector3(cx, hi + 0.05f, cz), yaw, ref meshId);
+                    lootTier = (i > 0 && i < TownCols - 1 && j > 0 && j < TownRows - 1) ? 3 : 2;   // downtown core is hot
                     foreach (var s in spots) if (rng.NextDouble() < (tower ? 0.55 : 0.9)) { DropLoot(lootRoot, go.transform.TransformPoint(s)); loot++; }
                     made++; if (tower) towers++;
                 }

@@ -1,0 +1,89 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4eff84dc5cd8134a98f49421ab18cfe, type: 3}
+  m_Name: W_zalzal45
+  m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
+  weaponId: zalzal45
+  displayName: Zalzal-45
+  arabicName: Zalzal-45
+  weaponClass: 1
+  ammoType: 3
+  damage: 41
+  headshotMultiplier: 2.1
+  limbMultiplier: 0.9
+  pellets: 1
+  ignoresArmor: 0
+  range: 180
+  falloffStart: 0.6
+  roundsPerMinute: 650
+  fireModes: 0200000000000000i
+  burstCount: 3
+  magazineSize: 25
+  reloadSeconds: 2
+  tacticalReloadSeconds: 1.7
+  adsSeconds: 0.18
+  drawSeconds: 0.45
+  hipSpread: 1.7
+  shoulderSpread: 0.93500006
+  adsSpread: 0.12
+  bloomPerShot: 0.12
+  bloomRecoveryPerSecond: 2.5
+  maxBloom: 1.5
+  movingMultiplier: 1.6
+  airborneMultiplier: 3
+  crouchMultiplier: 0.8
+  proneMultiplier: 0.6
+  recoilPattern:
+  - {x: 0.047489196, y: 0.35}
+  - {x: 0.025852693, y: 0.36225}
+  - {x: -0.020229658, y: 0.3745}
+  - {x: -0.056250133, y: 0.38674998}
+  - {x: -0.051344488, y: 0.399}
+  - {x: -0.004377245, y: 0.41125}
+  - {x: 0.051530145, y: 0.4235}
+  - {x: 0.0722317, y: 0.43575}
+  - {x: 0.03735543, y: 0.44799998}
+  - {x: -0.030718569, y: 0.46025}
+  - {x: -0.08075739, y: 0.4725}
+  - {x: -0.07123258, y: 0.4725}
+  - {x: -0.00451772, y: 0.4725}
+  - {x: 0.07124909, y: 0.4725}
+  - {x: 0.09681641, y: 0.4725}
+  - {x: 0.048107177, y: 0.4725}
+  - {x: -0.041981842, y: 0.4725}
+  - {x: -0.105474964, y: 0.4725}
+  - {x: -0.090607315, y: 0.4725}
+  - {x: -0.0038103536, y: 0.4725}
+  - {x: 0.09150701, y: 0.4725}
+  - {x: 0.12122234, y: 0.4725}
+  - {x: 0.05809817, y: 0.4725}
+  - {x: -0.054010782, y: 0.4725}
+  - {x: -0.13038215, y: 0.4725}
+  - {x: -0.109451555, y: 0.4725}
+  - {x: -0.002255156, y: 0.4725}
+  - {x: 0.112287134, y: 0.4725}
+  - {x: 0.14542854, y: 0.4725}
+  - {x: 0.06731892, y: 0.4725}
+  recoilJitter: 0.06
+  adsRecoilMultiplier: 0.75
+  crouchRecoilMultiplier: 0.85
+  proneRecoilMultiplier: 0.65
+  recoilRecovery: 0.6
+  recoilResetSeconds: 0.35
+  defaultScope: 0
+  allowedScopes: 000000000100000002000000030000000400000005000000i
+  moveSpeedMultiplier: 1
+  viewPrefab: {fileID: 0}
+  shotSound: {fileID: 8300000, guid: 352cca633898adc4495d2a774441a631, type: 3}
+  suppressedShotSound: {fileID: 8300000, guid: 282d38ce8260ca543b7476ddc96e2759, type: 3}
+  reloadSound: {fileID: 8300000, guid: d816092b48175ce448da01ccbe9f1468, type: 3}
+  drySound: {fileID: 8300000, guid: c6853186b704ad34eb694407cfdc7b13, type: 3}

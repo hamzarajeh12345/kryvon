@@ -1,0 +1,89 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4eff84dc5cd8134a98f49421ab18cfe, type: 3}
+  m_Name: W_barq762
+  m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
+  weaponId: barq762
+  displayName: Barq-762
+  arabicName: Barq-762
+  weaponClass: 0
+  ammoType: 1
+  damage: 46
+  headshotMultiplier: 2.1
+  limbMultiplier: 0.9
+  pellets: 1
+  ignoresArmor: 0
+  range: 330
+  falloffStart: 0.6
+  roundsPerMinute: 700
+  fireModes: 0200000000000000i
+  burstCount: 3
+  magazineSize: 30
+  reloadSeconds: 2.4
+  tacticalReloadSeconds: 2.0400002
+  adsSeconds: 0.18
+  drawSeconds: 0.45
+  hipSpread: 1.7
+  shoulderSpread: 0.93500006
+  adsSpread: 0.12
+  bloomPerShot: 0.12
+  bloomRecoveryPerSecond: 2.5
+  maxBloom: 1.5
+  movingMultiplier: 1.6
+  airborneMultiplier: 3
+  crouchMultiplier: 0.8
+  proneMultiplier: 0.6
+  recoilPattern:
+  - {x: 0.14453706, y: 0.9}
+  - {x: 0.23624964, y: 0.93149996}
+  - {x: 0.14798401, y: 0.963}
+  - {x: -0.07323944, y: 0.9945}
+  - {x: -0.2639138, y: 1.026}
+  - {x: -0.26482427, y: 1.0575}
+  - {x: -0.05282785, y: 1.089}
+  - {x: 0.22464071, y: 1.1205}
+  - {x: 0.3513054, y: 1.152}
+  - {x: 0.21048622, y: 1.1834999}
+  - {x: -0.11084278, y: 1.2149999}
+  - {x: -0.37304324, y: 1.2149999}
+  - {x: -0.36249068, y: 1.2149999}
+  - {x: -0.06474057, y: 1.2149999}
+  - {x: 0.30756572, y: 1.2149999}
+  - {x: 0.46601793, y: 1.2149999}
+  - {x: 0.26974064, y: 1.2149999}
+  - {x: -0.15213391, y: 1.2149999}
+  - {x: -0.4835033, y: 1.2149999}
+  - {x: -0.4581201, y: 1.2149999}
+  - {x: -0.07279347, y: 1.2149999}
+  - {x: 0.39324415, y: 1.2149999}
+  - {x: 0.5802898, y: 1.2149999}
+  - {x: 0.32569432, y: 1.2149999}
+  - {x: -0.19708213, y: 1.2149999}
+  - {x: -0.5952024, y: 1.2149999}
+  - {x: -0.5516301, y: 1.2149999}
+  - {x: -0.07697693, y: 1.2149999}
+  - {x: 0.48160797, y: 1.2149999}
+  - {x: 0.69402343, y: 1.2149999}
+  recoilJitter: 0.1675
+  adsRecoilMultiplier: 0.75
+  crouchRecoilMultiplier: 0.85
+  proneRecoilMultiplier: 0.65
+  recoilRecovery: 0.6
+  recoilResetSeconds: 0.35
+  defaultScope: 0
+  allowedScopes: 00000000010000000200000003000000040000000500000006000000i
+  moveSpeedMultiplier: 1
+  viewPrefab: {fileID: 0}
+  shotSound: {fileID: 8300000, guid: f17541810066bc745b9f03b6a5a591e8, type: 3}
+  suppressedShotSound: {fileID: 8300000, guid: 282d38ce8260ca543b7476ddc96e2759, type: 3}
+  reloadSound: {fileID: 8300000, guid: d816092b48175ce448da01ccbe9f1468, type: 3}
+  drySound: {fileID: 8300000, guid: c6853186b704ad34eb694407cfdc7b13, type: 3}

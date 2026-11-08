@@ -210,7 +210,11 @@ namespace Kryvon.EditorTools
             player.tag = "Player";
             KryvonWorld.MakeGrave(player, 8f);
             new GameObject("KillFeed").AddComponent<KryvonKillFeed>();
-            player.AddComponent<KryvonGear>(); player.AddComponent<KryvonLootLabels>();
+            var gearC = player.AddComponent<KryvonGear>(); player.AddComponent<KryvonLootLabels>();
+            Set(gearC, "useSound", AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactSoft_heavy_000.ogg"));
+            Set(gearC, "doneSound", AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactGeneric_light_000.ogg"));
+            var hudC = player.AddComponent<KryvonHUD>(); Set(hudC, "font", AssetDatabase.LoadAssetAtPath<Font>($"{Root}/ThirdParty/Fonts/Rajdhani-SemiBold.ttf"));
+            BuildZone();
             var drop = player.AddComponent<KryvonAirdrop>();
             Set(drop, "crateTemplate", KryvonWorld.MakeAirdropTemplate(GameObject.Find("Outskirts")?.transform));
             Set(drop, "flareSound", A("gun_pistol")); Set(drop, "planeSound", A("vehicle_engine"));
@@ -316,6 +320,32 @@ namespace Kryvon.EditorTools
             float fov = cam.fieldOfView; cam.fieldOfView = 60;
             for (int i = 0; i < shots.Length; i++) { cam.transform.position = shots[i].Item1; cam.transform.LookAt(shots[i].Item2); KryvonShowcase.Capture(Path.Combine(dir, $"World{i + 1}.png")); }
             cam.fieldOfView = fov;
+        }
+
+        // Al-Tawq with the match timings: 120 s landing (circle shows at 60 s), then five phases, ~24 min in all.
+        static void BuildZone()
+        {
+            var go = new GameObject("Al-Tawq");
+            var zone = go.AddComponent<SafeZone>();
+            var wall = GameObject.CreatePrimitive(PrimitiveType.Cylinder); Object.DestroyImmediate(wall.GetComponent<Collider>()); wall.name = "Al-Tawq wall";
+            var m = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            m.SetFloat("_Surface", 1); m.SetFloat("_Blend", 0); m.SetFloat("_Cull", 0); m.SetOverrideTag("RenderType", "Transparent"); m.renderQueue = 3000;
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha); m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha); m.SetInt("_ZWrite", 0);
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT"); m.SetColor("_BaseColor", new Color(0.25f, 0.5f, 1f, 0.22f));
+            AssetDatabase.DeleteAsset(Root + "/Materials/M_Zone.mat"); AssetDatabase.CreateAsset(m, Root + "/Materials/M_Zone.mat");
+            wall.GetComponent<Renderer>().sharedMaterial = m; wall.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            var so = new SerializedObject(zone);
+            so.FindProperty("startRadius").floatValue = 640f; so.FindProperty("landingSeconds").floatValue = 120f;
+            so.FindProperty("wallVisual").objectReferenceValue = wall.transform; so.FindProperty("wallHeight").floatValue = 300f;
+            var ph = so.FindProperty("phases"); ph.arraySize = 5;
+            float[,] p = { { 240, 180, 330, 1 }, { 180, 120, 190, 3 }, { 120, 90, 100, 6 }, { 90, 60, 50, 10 }, { 30, 45, 1, 22 } };   // wait, shrink, radius, % HP per second
+            for (int i = 0; i < 5; i++)
+            {
+                var e = ph.GetArrayElementAtIndex(i);
+                e.FindPropertyRelative("waitSeconds").floatValue = p[i, 0]; e.FindPropertyRelative("shrinkSeconds").floatValue = p[i, 1];
+                e.FindPropertyRelative("radius").floatValue = p[i, 2]; e.FindPropertyRelative("damagePerSecond").floatValue = p[i, 3];
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         public static void BuildAndCapture()

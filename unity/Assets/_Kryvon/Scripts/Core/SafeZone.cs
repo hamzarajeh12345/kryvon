@@ -20,6 +20,8 @@ namespace Kryvon
         [Header("Map")]
         [SerializeField] Vector3 mapCenter = Vector3.zero;
         [SerializeField] float startRadius = 1150f;
+        [Tooltip("Landing phase: no zone, no damage. The first circle appears halfway through.")]
+        [SerializeField] float landingSeconds = 120f;
 
         [Header("Phases")]
         [SerializeField] ZonePhase[] phases =
@@ -47,6 +49,8 @@ namespace Kryvon
         public int PhaseIndex { get; private set; }
         public bool Shrinking { get; private set; }
         public bool Running { get; private set; }
+        public bool Landing { get; private set; }
+        public bool CircleShown => Running || (Landing && Timer <= landingSeconds * 0.5f);
         /// <summary>Seconds until the shrink starts (while waiting) or ends (while shrinking).</summary>
         public float Timer { get; private set; }
         public float CurrentDamagePerSecond => phases[Mathf.Min(PhaseIndex, phases.Length - 1)].damagePerSecond;
@@ -67,9 +71,14 @@ namespace Kryvon
 
         public void Begin()
         {
-            if (Running || phases.Length == 0) return;
-            Running = true;
-            StartPhase(0);
+            if (Running || Landing || phases.Length == 0) return;
+            Landing = true; Timer = landingSeconds;
+            StartPhase(0); Timer = landingSeconds;   // the next circle is known but hidden for the first half of the landing
+        }
+        void EndLanding()
+        {
+            Landing = false; Running = true;
+            Timer = phases[0].waitSeconds;
         }
 
         public bool IsInside(Vector3 p)
@@ -93,6 +102,7 @@ namespace Kryvon
 
         void Update()
         {
+            if (Landing) { Timer -= Time.deltaTime; if (Timer <= 0f) EndLanding(); return; }
             if (!Running) return;
             Timer -= Time.deltaTime;
 

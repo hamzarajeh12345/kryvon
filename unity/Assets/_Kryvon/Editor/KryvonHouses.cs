@@ -215,15 +215,10 @@ namespace Kryvon.EditorTools
         }
         public static void EnsureLootGuns()
         {
-            lootGuns.Clear();
-            var auto = new[] { FireMode.Auto, FireMode.Single }; var single = new[] { FireMode.Single };
-            lootGuns.Add(Gun("AlSaqr", "saqr", "Al-Saqr", "الصقر", WeaponClass.AssaultRifle, AmmoType.A556, 40, 660, 30, 350, auto, ScopeType.RedDot, "gun_ar"));
-            lootGuns.Add(Gun("Zalzal", "zalzal", "Zalzal SMG", "زلزال", WeaponClass.SMG, AmmoType.A9mm, 25, 900, 33, 150, auto, ScopeType.None, "gun_smg"));
-            lootGuns.Add(Gun("Raad", "raad", "Ra'd 12", "رعد", WeaponClass.Shotgun, AmmoType.Gauge12, 22, 70, 5, 40, single, ScopeType.None, "gun_shotgun"));
-            lootGuns.Add(Gun("Saif", "saif", "Saif P9", "سيف", WeaponClass.Pistol, AmmoType.A9mm, 30, 400, 15, 100, single, ScopeType.None, "gun_pistol"));
-            lootGuns.Add(Gun("AlQannas", "qannas", "Al-Qannas", "القنّاص", WeaponClass.Sniper, AmmoType.A300, 78, 48, 5, 750, single, ScopeType.X4, "gun_sniper"));
-            lootGuns.Add(Gun("Jabal", "jabal", "Jabal LMG", "جبل", WeaponClass.LMG, AmmoType.A762, 42, 600, 75, 400, auto, ScopeType.None, "gun_lmg"));
+            lootGuns.Clear(); ArmOf.Clear();
+            foreach (var a in Arsenal) lootGuns.Add(MakeWeapon(a));
         }
+        public static int lootTier = 2;   // 1 low (farms, lone houses) · 2 mid (suburbs) · 3 high (downtown, ruins)
         static readonly Dictionary<WeaponClass, (string model, float len)> GunModel = new()
         {
             { WeaponClass.AssaultRifle, ("w_ar", 0.95f) }, { WeaponClass.SMG, ("w_smg", 0.65f) }, { WeaponClass.Shotgun, ("w_shotgun", 1.0f) },
@@ -238,6 +233,7 @@ namespace Kryvon.EditorTools
             { LootKind.Syringe, ("l_syringe", 0.2f, 'y', 0.03f, new Vector3(90, 0, 0)) }, { LootKind.Grenade, ("l_grenade", 0.14f, 'y', 0f, Vector3.zero) },
             { LootKind.Backpack, ("l_backpack", 0.55f, 'y', 0f, new Vector3(-75, 0, 0)) }, { LootKind.Scope, ("l_scope", 0.32f, 'x', 0f, Vector3.zero) },
             { LootKind.FlareGun, ("l_flaregun", 0.3f, 'x', 0.02f, new Vector3(0, 0, 90)) },
+            { LootKind.FirstAid, ("l_firstaid", 0.36f, 'x', 0f, Vector3.zero) }, { LootKind.Painkiller, ("l_painkiller", 0.09f, 'y', 0f, Vector3.zero) },
         };
         static void DropLoot(Transform parent, Vector3 p) { lootSpotsUsed.Add((parent, p)); DropLoot(parent, p, null); }
         static void DropLoot(Transform parent, Vector3 p, LootKind? force)
@@ -245,20 +241,20 @@ namespace Kryvon.EditorTools
             if (lootGuns.Count == 0) EnsureLootGuns();
             double r = rng.NextDouble();
             GameObject g; KryvonLoot l;
-            LootKind k = force ?? (r < 0.26 ? LootKind.Weapon : r < 0.46 ? LootKind.Ammo : r < 0.56 ? LootKind.Bandage : r < 0.62 ? LootKind.Medkit : r < 0.69 ? LootKind.Drink
-                : r < 0.73 ? LootKind.Syringe : r < 0.79 ? LootKind.Grenade : r < 0.86 ? LootKind.Vest : r < 0.92 ? LootKind.Helmet : r < 0.97 ? LootKind.Backpack : LootKind.Scope);
+            LootKind k = force ?? (r < 0.25 ? LootKind.Weapon : r < 0.45 ? LootKind.Ammo : r < 0.54 ? LootKind.Bandage : r < 0.59 ? LootKind.FirstAid : r < 0.61 + 0.01 * lootTier ? LootKind.Medkit
+                : r < 0.67 ? LootKind.Drink : r < 0.7 ? LootKind.Painkiller : r < 0.72 ? LootKind.Syringe : r < 0.77 ? LootKind.Grenade : r < 0.85 ? LootKind.Vest : r < 0.91 ? LootKind.Helmet : r < 0.96 ? LootKind.Backpack : LootKind.Scope);
             if (k == LootKind.Weapon)
             {
-                var wd = lootGuns[rng.Next(lootGuns.Count)];
-                var (model, len) = GunModel[wd.weaponClass];
+                var wd = PickWeapon(lootTier);
+                var (model, len) = ModelOf(wd);
                 g = Spawn("Weapons/" + model, len, 'z', parent) ?? new GameObject("Gun");
                 g.transform.position = p + Vector3.up * 0.04f; g.transform.rotation = Quaternion.Euler(0, R(0, 360), 90);
                 l = g.AddComponent<KryvonLoot>(); l.kind = LootKind.Weapon; l.weapon = wd;
-                l.rarity = wd.weaponClass switch { WeaponClass.Sniper => 3, WeaponClass.LMG => 3, WeaponClass.AssaultRifle => 2, WeaponClass.Shotgun => 1, WeaponClass.SMG => 1, _ => 0 };
+                l.rarity = ArmOf.TryGetValue(wd, out var arm) ? (arm.airdrop ? 4 : arm.tier) : 1;
             }
             else
             {
-                int level = 1 + (rng.NextDouble() < 0.3 ? 1 : 0) + (rng.NextDouble() < 0.08 ? 1 : 0);
+                int level = lootTier == 1 ? (rng.NextDouble() < 0.1 ? 2 : 1) : lootTier == 2 ? (rng.NextDouble() < 0.45 ? 2 : 1) : (rng.NextDouble() < 0.4 ? 3 : 2);
                 if ((k == LootKind.Vest || k == LootKind.Helmet) && !File.Exists($"{Root}/Models/Loot/l_vest.glb")) g = ArmorModel(k, parent, p);
                 else
                 {
@@ -274,12 +270,12 @@ namespace Kryvon.EditorTools
                     if (rs.Length > 0) { var b = rs[0].bounds; foreach (var rr in rs) b.Encapsulate(rr.bounds); g.transform.position += Vector3.up * (p.y - b.min.y + lift); }
                 }
                 l = g.AddComponent<KryvonLoot>(); l.kind = k; l.level = level;
-                var gunForAmmo = lootGuns[rng.Next(lootGuns.Count)];
+                var gunForAmmo = PickWeapon(lootTier);
                 l.ammoType = gunForAmmo.ammoType; l.amount = k == LootKind.Bandage ? 5 : k == LootKind.Ammo ? Mathf.Max(10, gunForAmmo.magazineSize) : 1;
                 l.rarity = k switch
                 {
                     LootKind.Vest or LootKind.Helmet or LootKind.Backpack or LootKind.Scope => level == 3 ? 3 : level == 2 ? 2 : 1,
-                    LootKind.Medkit or LootKind.Syringe => 2, LootKind.Drink or LootKind.Grenade => 1, LootKind.FlareGun => 4, _ => 0,
+                    LootKind.Medkit or LootKind.Syringe => 2, LootKind.FirstAid or LootKind.Painkiller => 1, LootKind.Drink or LootKind.Grenade => 1, LootKind.FlareGun => 4, _ => 0,
                 };
             }
             var glow = KryvonLoot.RarityColors[l.rarity];
@@ -325,7 +321,7 @@ namespace Kryvon.EditorTools
             float Y(float x, float z) => terrain.SampleHeight(new Vector3(x, 0, z)) + terrain.transform.position.y;
             var root = new GameObject("Houses").transform; root.SetParent(parent, false);
             var lootRoot = new GameObject("Loot").transform; lootRoot.SetParent(parent, false);
-            int meshId = 0, houses = 0, loot = 0;
+            int meshId = 0, houses = 0, loot = 0; lootTier = 1;
             for (int cl = 0; cl < 22; cl++)
             {
                 // cluster centre in the open, leaving plenty of empty fields between clusters

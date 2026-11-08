@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Kryvon
 {
-    public enum LootKind { Weapon, Ammo, Medkit, Bandage, Vest, Helmet, Backpack, Drink, Syringe, Grenade, Scope, FlareGun }
+    public enum LootKind { Weapon, Ammo, Medkit, Bandage, Vest, Helmet, Backpack, Drink, Syringe, Grenade, Scope, FlareGun, FirstAid, Painkiller }
 
     public class KryvonLoot : MonoBehaviour
     {
@@ -26,13 +26,15 @@ namespace Kryvon
         {
             LootKind.Weapon => weapon ? weapon.displayName : "Weapon",
             LootKind.Ammo => $"{AmmoName(ammoType)} Ammo x{amount}",
-            LootKind.Medkit => "First-aid kit",
+            LootKind.Medkit => "Med Kit  (100%)",
+            LootKind.FirstAid => "First Aid Kit  (75%)",
+            LootKind.Painkiller => "Painkillers  (+60 boost)",
             LootKind.Bandage => $"Bandages x{amount}",
             LootKind.Vest => $"Vest Lv.{level}",
             LootKind.Helmet => $"Helmet Lv.{level}",
             LootKind.Backpack => $"Backpack Lv.{level}",
-            LootKind.Drink => "Energy Drink",
-            LootKind.Syringe => "Adrenaline Syringe",
+            LootKind.Drink => "Energy Drink  (+30 boost)",
+            LootKind.Syringe => "Adrenaline Syringe  (full boost)",
             LootKind.Grenade => "Frag Grenade",
             LootKind.FlareGun => "FLARE GUN  (G = call a supply drop)",
             LootKind.Scope => $"{(level >= 3 ? "8x" : level == 2 ? "4x" : "2x")} Scope",
@@ -40,6 +42,7 @@ namespace Kryvon
         };
 
         /// returns true when the item was used up
+        public static Color AmmoColor(AmmoType t) => t switch { AmmoType.A556 => new Color(0.35f, 0.85f, 0.35f), AmmoType.A762 => new Color(0.95f, 0.75f, 0.25f), AmmoType.A9mm => new Color(0.35f, 0.6f, 1f), AmmoType.Gauge12 => new Color(1f, 0.32f, 0.28f), AmmoType.A300 => new Color(0.8f, 0.45f, 1f), _ => Color.white };
         public static string AmmoName(AmmoType t) => t switch { AmmoType.A556 => "5.56mm", AmmoType.A762 => "7.62mm", AmmoType.A9mm => "9mm", AmmoType.A45 => ".45 ACP", AmmoType.Gauge12 => "12 Gauge", AmmoType.A300 => ".300 Magnum", _ => t.ToString() };
 
         public bool Apply(GameObject player)
@@ -52,8 +55,10 @@ namespace Kryvon
                     int slot = w.CurrentSlot.data == null ? w.CurrentIndex : (w.CurrentIndex == 0 ? 1 : 0);
                     w.Give(slot, weapon, weapon.magazineSize); w.AddAmmo(weapon.ammoType, weapon.magazineSize * 2); return true;
                 case LootKind.Ammo: if (!w) return false; w.AddAmmo(ammoType, amount); return true;
-                case LootKind.Medkit: if (!h) return false; h.Heal(100f, 100f); return true;
-                case LootKind.Bandage: if (!h) return false; h.Heal(10f * amount, 75f); return true;
+                case LootKind.Medkit: gear.Add(Consumable.MedKit); return true;
+                case LootKind.FirstAid: gear.Add(Consumable.FirstAid); return true;
+                case LootKind.Painkiller: gear.Add(Consumable.Painkillers); return true;
+                case LootKind.Bandage: gear.Add(Consumable.Bandage, Mathf.Max(1, amount)); return true;
                 case LootKind.Vest: if (!h) return false; h.vestReduction = new[] { 0f, 0.3f, 0.4f, 0.55f }[level]; h.vestDurability = 100f + 50f * level; return true;
                 case LootKind.Helmet: if (!h) return false; h.helmetReduction = new[] { 0f, 0.3f, 0.4f, 0.55f }[level]; h.helmetDurability = 80f + 40f * level; return true;
                 case LootKind.Backpack: if (level <= gear.backpack) return false; gear.SetBackpack(level); return true;

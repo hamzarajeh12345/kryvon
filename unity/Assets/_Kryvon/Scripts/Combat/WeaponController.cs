@@ -270,7 +270,7 @@ namespace Kryvon
             bool head = box != null && box.isHead;
             float part = head ? d.headshotMultiplier : box != null ? box.damageMultiplier : 1f;
             float dmg = d.damage * falloff * part;
-            target.TakeDamage(new DamageInfo { Amount = dmg, Headshot = head, Source = gameObject, Cause = d.displayName });
+            target.TakeDamage(new DamageInfo { Amount = dmg, Headshot = head, Source = gameObject, Cause = d.displayName, IgnoreArmor = d.ignoresArmor });
             OnHit?.Invoke(target, dmg, head);
         }
 

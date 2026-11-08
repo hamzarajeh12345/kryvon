@@ -26,6 +26,7 @@ namespace Kryvon
         public static void Blood(Vector3 p, int n) => Burst(p, n, new Color(0.45f, 0.02f, 0.02f, 0.95f), 3.2f, 0.12f, 0.7f, 1.2f);
         public static void Dust(Vector3 p) => Burst(p, 30, new Color(0.7f, 0.64f, 0.52f, 0.6f), 1.6f, 0.5f, 1.4f, -0.05f);
         public static void Smoke(Vector3 p) => Burst(p, 3, new Color(0.9f, 0.12f, 0.08f, 0.55f), 0.8f, 1.6f, 3.5f, -0.08f);
+        public static void Fire(Vector3 p) { Burst(p, 60, new Color(1f, 0.55f, 0.15f, 0.9f), 6f, 0.9f, 0.9f, -0.2f); Burst(p, 40, new Color(0.15f, 0.13f, 0.12f, 0.8f), 3f, 2.2f, 3.5f, -0.15f); }
         public static void Glass(Vector3 p) => Burst(p, 45, new Color(0.8f, 0.9f, 0.95f, 0.85f), 3.5f, 0.07f, 1.1f, 1.4f);
     }
 }

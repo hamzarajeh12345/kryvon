@@ -1,0 +1,89 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4eff84dc5cd8134a98f49421ab18cfe, type: 3}
+  m_Name: W_raad97
+  m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
+  weaponId: raad97
+  displayName: Ra'd 97
+  arabicName: Ra'd 97
+  weaponClass: 4
+  ammoType: 4
+  damage: 26
+  headshotMultiplier: 2.1
+  limbMultiplier: 0.9
+  pellets: 9
+  ignoresArmor: 0
+  range: 45
+  falloffStart: 0.6
+  roundsPerMinute: 60
+  fireModes: 00000000i
+  burstCount: 3
+  magazineSize: 5
+  reloadSeconds: 4
+  tacticalReloadSeconds: 3.4
+  adsSeconds: 0.18
+  drawSeconds: 0.45
+  hipSpread: 4.5
+  shoulderSpread: 2.4750001
+  adsSpread: 3.1499999
+  bloomPerShot: 0.12
+  bloomRecoveryPerSecond: 2.5
+  maxBloom: 1.5
+  movingMultiplier: 1.6
+  airborneMultiplier: 3
+  crouchMultiplier: 0.8
+  proneMultiplier: 0.6
+  recoilPattern:
+  - {x: -0, y: 2.2}
+  - {x: 0, y: 2.277}
+  - {x: 0, y: 2.354}
+  - {x: 0, y: 2.431}
+  - {x: -0, y: 2.5080001}
+  - {x: -0, y: 2.585}
+  - {x: -0, y: 2.662}
+  - {x: -0, y: 2.739}
+  - {x: 0, y: 2.816}
+  - {x: 0, y: 2.8930001}
+  - {x: 0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: 0, y: 2.97}
+  - {x: 0, y: 2.97}
+  - {x: 0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: 0, y: 2.97}
+  - {x: 0, y: 2.97}
+  - {x: 0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: -0, y: 2.97}
+  - {x: 0, y: 2.97}
+  recoilJitter: 0.03
+  adsRecoilMultiplier: 0.75
+  crouchRecoilMultiplier: 0.85
+  proneRecoilMultiplier: 0.65
+  recoilRecovery: 0.6
+  recoilResetSeconds: 0.35
+  defaultScope: 0
+  allowedScopes: 000000000100000002000000i
+  moveSpeedMultiplier: 1
+  viewPrefab: {fileID: 0}
+  shotSound: {fileID: 8300000, guid: 13520eae1aaeecb4ca08e44e7d7b2388, type: 3}
+  suppressedShotSound: {fileID: 8300000, guid: 282d38ce8260ca543b7476ddc96e2759, type: 3}
+  reloadSound: {fileID: 8300000, guid: d816092b48175ce448da01ccbe9f1468, type: 3}
+  drySound: {fileID: 8300000, guid: c6853186b704ad34eb694407cfdc7b13, type: 3}

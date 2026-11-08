@@ -151,6 +151,8 @@ namespace Kryvon.EditorTools
                 Pediment(f, new Vector3(sd * 6.0f, 29.5f, 0.0f), 7.2f, 2.2f, 2.2f, carve, "half" + sd, true, sd);
             }
             // weathering: dark streaks down the cliff above the façade
+            lootTier = 3; var pl = new GameObject("PetraLoot").transform; pl.SetParent(root, false);
+            for (int k = 0; k < 22; k++) DropLoot(pl, root.TransformPoint(new Vector3(R(-20, 20), 0.12f, R(-48, -4))));
             Debug.Log("KRYVON: Petra built");
         }
 
@@ -212,6 +214,9 @@ namespace Kryvon.EditorTools
             foreach (var x in new[] { -6.5f, 6.5f }) P(PrimitiveType.Cube, gate, new Vector3(x, 6, 0), new Vector3(4, 12, 4), lime);
             P(PrimitiveType.Cube, gate, new Vector3(0, 13, 0), new Vector3(17, 3, 4), lime);
             foreach (var x in new[] { -8.8f, -4.2f, 4.2f, 8.8f }) Column(gate, new Vector3(x, 0, -2.4f), 11.5f, 0.38f, lime);
+            lootTier = 3; var jl = new GameObject("JerashLoot").transform; jl.SetParent(root, false);
+            for (int k = 0; k < 18; k++) DropLoot(jl, root.TransformPoint(new Vector3(R(-4, 4), 0.12f, R(-50, 50))));
+            for (int k = 0; k < 8; k++) DropLoot(jl, root.TransformPoint(new Vector3(36 + R(-6, 6), 0.12f, 10 + R(1, 8))));
             Debug.Log("KRYVON: Jerash built");
         }
     }

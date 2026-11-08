@@ -24,7 +24,7 @@ namespace Kryvon
         Text heroName, heroRole, heroBio, modeLabel, loadText, tip; Image loadFill;
         int hero, mode = 2; readonly List<Image> modeChips = new(); readonly List<Image> navMarks = new();
         AudioSource sfx; float spin, spinVel; Sprite round, pill, glow, grad, gradH;
-        static readonly string[] Modes = { "SOLO", "DUO", "SQUAD" };
+        static readonly string[] Modes = { "BATTLE ROYALE", "RANKED", "CUSTOM MATCH" };
         static readonly string[] Tips = { "Shoot out a window and climb through – doors can be opened and closed with F.", "Every grave holds the fallen player's gear. Press F at the crate.", "Towers have stairs to the roof – the best sniper nests in the map.", "Headshots deal 2.3× damage. The hit marker turns red.", "Petra's Siq is narrow: perfect for an ambush, deadly to cross." };
 
         // ---------- sprites built in code ----------
@@ -129,80 +129,134 @@ namespace Kryvon
             cg.gameObject.SetActive(false); lg.alpha = 1;
         }
 
-        // ---------- lobby ----------
+        // ---------- lobby (layout of the owner's mock-up: top tabs, left mode stack + map card, right region strip) ----------
+        [SerializeField] Transform[] tagAnchors;          // heads of the squad members on the helipad
+        [SerializeField] string[] tagNames;
+        [SerializeField] Texture2D[] mapThumbs;
+        [SerializeField] string[] mapNames;
+        readonly List<(Transform t, RectTransform r)> tags = new();
+        readonly List<Image> tabBgs = new(); readonly List<Image> regionFrames = new();
+        Image mapCardImg; Text mapCardName; int region;
+
+        Sprite S(Texture2D t) => t ? Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f)) : null;
+
         void BuildLobby()
         {
             lobby = new GameObject("Lobby", typeof(RectTransform), typeof(CanvasGroup)).GetComponent<RectTransform>(); lobby.SetParent(canvas, false); Fill(lobby);
-            // cinematic gradients top and bottom so text reads over the 3D scene
-            var top = Panel(lobby, "TopShade", new Color(0, 0, 0, 0.75f), grad); top.anchorMin = new Vector2(0, 1); top.anchorMax = new Vector2(1, 1); top.pivot = new Vector2(0.5f, 1); top.sizeDelta = new Vector2(0, 220); top.anchoredPosition = Vector2.zero;
-            var bot = Panel(lobby, "BottomShade", new Color(0, 0, 0, 0.85f), grad); bot.anchorMin = Vector2.zero; bot.anchorMax = new Vector2(1, 0); bot.pivot = new Vector2(0.5f, 0); bot.sizeDelta = new Vector2(0, 340); bot.anchoredPosition = Vector2.zero; bot.localScale = new Vector3(1, -1, 1);
-            var left = Panel(lobby, "LeftShade", new Color(0, 0, 0, 0.6f), gradH); left.anchorMin = Vector2.zero; left.anchorMax = new Vector2(0, 1); left.pivot = new Vector2(0, 0.5f); left.sizeDelta = new Vector2(760, 0); left.anchoredPosition = Vector2.zero;
+            var top = Panel(lobby, "TopShade", new Color(0, 0, 0, 0.55f), grad); top.anchorMin = new Vector2(0, 1); top.anchorMax = new Vector2(1, 1); top.pivot = new Vector2(0.5f, 1); top.sizeDelta = new Vector2(0, 160); top.anchoredPosition = Vector2.zero;
+            var left = Panel(lobby, "LeftShade", new Color(0, 0, 0, 0.55f), gradH); left.anchorMin = Vector2.zero; left.anchorMax = new Vector2(0, 1); left.pivot = new Vector2(0, 0.5f); left.sizeDelta = new Vector2(620, 0); left.anchoredPosition = Vector2.zero;
 
-            // logo
-            var logo = Label(lobby, "KRAYVON", display, 92, Gold); Place(logo.rectTransform, new Vector2(0, 1), new Vector2(64, -36), new Vector2(560, 100), new Vector2(0, 1));
-            logo.gameObject.AddComponent<Outline>().effectColor = new Color(0.4f, 0.22f, 0.04f, 0.9f);
-            var season = Label(lobby, "SEASON 1  ·  BILAD AL-SHAM", bodyBold, 20, Dim); Place(season.rectTransform, new Vector2(0, 1), new Vector2(68, -132), new Vector2(560, 30), new Vector2(0, 1));
+            // logo: gold mountain-and-skyline mark over the wordmark
+            var mark = Label(lobby, "▲", display, 120, Gold, TextAnchor.MiddleCenter); Place(mark.rectTransform, new Vector2(0, 1), new Vector2(70, -10), new Vector2(380, 110), new Vector2(0, 1));
+            var mark2 = Label(lobby, "▲  ▲", display, 64, GoldDeep, TextAnchor.MiddleCenter); Place(mark2.rectTransform, new Vector2(0, 1), new Vector2(70, -46), new Vector2(380, 70), new Vector2(0, 1));
+            var logo = Label(lobby, "KRAYVON", display, 104, new Color(0.95f, 0.95f, 0.97f), TextAnchor.MiddleCenter); Place(logo.rectTransform, new Vector2(0, 1), new Vector2(70, -112), new Vector2(380, 110), new Vector2(0, 1));
+            logo.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.6f); logo.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(3, -3);
+            var sub = Label(lobby, "— BATTLE ROYALE —", bodyBold, 24, Gold, TextAnchor.MiddleCenter); Place(sub.rectTransform, new Vector2(0, 1), new Vector2(70, -214), new Vector2(380, 30), new Vector2(0, 1));
 
-            // player card + currencies
-            var card = Panel(lobby, "PlayerCard", Ink, round); Place(card, new Vector2(1, 1), new Vector2(-48, -40), new Vector2(420, 92), new Vector2(1, 1));
-            var av = Panel(card, "Avatar", Gold, pill); Place(av, new Vector2(0, 0.5f), new Vector2(22, 0), new Vector2(60, 60), new Vector2(0, 0.5f));
-            Label(av, "H", display, 42, new Color(0.1f, 0.07f, 0.02f), TextAnchor.MiddleCenter);
-            var pn = Label(card, "HAMZA RAJEH", bodyBold, 26, Color.white); Place(pn.rectTransform, new Vector2(0, 1), new Vector2(100, -14), new Vector2(300, 32), new Vector2(0, 1));
-            var lvl = Label(card, "LEVEL 12  ·  NASHMI", body, 18, Dim); Place(lvl.rectTransform, new Vector2(0, 1), new Vector2(100, -46), new Vector2(300, 24), new Vector2(0, 1));
-            var xp = Panel(card, "XP", Line, pill); Place(xp, new Vector2(0, 0), new Vector2(100, 14), new Vector2(290, 6), new Vector2(0, 0));
-            var xpf = Panel(xp, "Fill", Gold, pill); xpf.anchorMin = Vector2.zero; xpf.anchorMax = new Vector2(0.64f, 1); xpf.offsetMin = xpf.offsetMax = Vector2.zero;
-            foreach (var (txt, x, col) in new[] { ("◆ 2,450", -490f, new Color(0.45f, 0.8f, 1f)), ("● 18,900", -640f, Gold) })
-            {
-                var chip = Panel(lobby, "Currency", Ink, pill); Place(chip, new Vector2(1, 1), new Vector2(x, -64), new Vector2(140, 44), new Vector2(1, 1));
-                Label(chip, txt, bodyBold, 22, col, TextAnchor.MiddleCenter);
-            }
-
-            // left navigation
-            string[] nav = { "PLAY", "CHARACTERS", "ARMORY", "SHOP", "SETTINGS" };
-            for (int i = 0; i < nav.Length; i++)
+            // top tab bar
+            string[] tabs = { "▶  PLAY", "▣  INVENTORY", "🛒  STORE", "★  MISSIONS", "⚙  SETTINGS" };
+            var bar = Panel(lobby, "TabBar", new Color(0.05f, 0.06f, 0.08f, 0.82f), round); Place(bar, new Vector2(0.5f, 1), new Vector2(-40, -26), new Vector2(980, 58), new Vector2(0.5f, 1));
+            for (int i = 0; i < tabs.Length; i++)
             {
                 int idx = i;
-                var b = Panel(lobby, "Nav" + nav[i], new Color(0, 0, 0, 0.001f)); Place(b, new Vector2(0, 0.5f), new Vector2(64, 150 - i * 74), new Vector2(380, 62), new Vector2(0, 0.5f));
-                var mark = Panel(b, "Mark", Gold); Place(mark, new Vector2(0, 0.5f), Vector2.zero, new Vector2(5, 38), new Vector2(0, 0.5f)); navMarks.Add(mark.GetComponent<Image>());
-                var t = Label(b, nav[i], display, 46, i == 0 ? Color.white : Dim); t.rectTransform.offsetMin = new Vector2(24, 0);
-                Btn(b, () => Nav(idx));
+                var t = Panel(bar, "Tab", i == 0 ? Gold : new Color(0, 0, 0, 0.001f), round); Place(t, new Vector2(0, 0.5f), new Vector2(6 + i * 194, 0), new Vector2(188, 48), new Vector2(0, 0.5f));
+                Label(t, tabs[i], bodyBold, 24, i == 0 ? new Color(0.12f, 0.08f, 0.02f) : Color.white, TextAnchor.MiddleCenter);
+                tabBgs.Add(t.GetComponent<Image>()); Btn(t, () => Tab(idx));
             }
-            SetNav(0);
+            // currencies + profile
+            foreach (var (txt, x, col) in new[] { ("● 12,450", -360f, Gold), ("◆ 620", -210f, new Color(0.75f, 0.55f, 1f)) })
+            {
+                var chip = Panel(lobby, "Currency", new Color(0.05f, 0.06f, 0.08f, 0.82f), round); Place(chip, new Vector2(1, 1), new Vector2(x, -26), new Vector2(144, 50), new Vector2(1, 1));
+                Label(chip, txt, bodyBold, 26, col, TextAnchor.MiddleCenter);
+            }
+            var prof = Panel(lobby, "Profile", new Color(0.05f, 0.06f, 0.08f, 0.82f), round); Place(prof, new Vector2(1, 1), new Vector2(-150, -26), new Vector2(54, 50), new Vector2(1, 1));
+            Label(prof, "👤", bodyBold, 26, Color.white, TextAnchor.MiddleCenter);
 
-            // hero name and switcher (under the 3D character)
-            heroName = Label(lobby, "", display, 84, Color.white, TextAnchor.MiddleCenter); Place(heroName.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 250), new Vector2(800, 96));
-            heroRole = Label(lobby, "", bodyBold, 22, Gold, TextAnchor.MiddleCenter); Place(heroRole.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 205), new Vector2(800, 30));
-            heroBio = Label(lobby, "", body, 20, Dim, TextAnchor.UpperCenter); Place(heroBio.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 150), new Vector2(640, 50));
+            // left stack: START GAME + modes
+            var start = Panel(lobby, "Start", Gold, round); Place(start, new Vector2(0, 0.5f), new Vector2(60, 110), new Vector2(400, 78), new Vector2(0, 0.5f));
+            var shine = Panel(start, "Shine", new Color(1, 1, 1, 0.22f), round); shine.anchorMin = new Vector2(0, 0.5f); shine.anchorMax = Vector2.one; shine.offsetMin = new Vector2(4, 0); shine.offsetMax = new Vector2(-4, -4);
+            var st = Label(start, "▶   START GAME", display, 50, new Color(0.12f, 0.07f, 0.01f), TextAnchor.MiddleLeft); st.rectTransform.offsetMin = new Vector2(28, 0);
+            Btn(start, StartMatch);
+            var startGlow = Panel(lobby, "StartGlow", new Color(1f, 0.6f, 0.15f, 0.3f), glow); Place(startGlow, new Vector2(0, 0.5f), new Vector2(20, 110), new Vector2(480, 150), new Vector2(0, 0.5f)); startGlow.SetSiblingIndex(start.GetSiblingIndex());
+            StartCoroutine(Pulse(startGlow.GetComponent<Image>()));
+            string[] modes = { "⛬  BATTLE ROYALE", "🏆  RANKED", "⊕  CUSTOM MATCH" };
+            for (int i = 0; i < modes.Length; i++)
+            {
+                int idx = i;
+                var m = Panel(lobby, "Mode", new Color(0.05f, 0.06f, 0.08f, 0.82f), round); Place(m, new Vector2(0, 0.5f), new Vector2(60, 26 - i * 62), new Vector2(400, 54), new Vector2(0, 0.5f));
+                var l = Label(m, modes[i], bodyBold, 26, Color.white); l.rectTransform.offsetMin = new Vector2(22, 0);
+                modeChips.Add(m.GetComponent<Image>()); Btn(m, () => SetMode(idx));
+            }
+            SetMode(Mathf.Clamp(PlayerPrefs.GetInt("kryvon.queue", 0), 0, 2));
+            // map card
+            var card = Panel(lobby, "MapCard", new Color(0.05f, 0.06f, 0.08f, 0.85f), round); Place(card, new Vector2(0, 0), new Vector2(60, 60), new Vector2(400, 210), new Vector2(0, 0));
+            mapCardImg = Panel(card, "Thumb", Color.white).GetComponent<Image>(); Fill(mapCardImg.rectTransform, 6); mapCardImg.preserveAspect = false;
+            var cshade = Panel(card, "Shade", new Color(0, 0, 0, 0.7f), grad); cshade.anchorMin = Vector2.zero; cshade.anchorMax = new Vector2(1, 0.4f); cshade.offsetMin = new Vector2(6, 6); cshade.offsetMax = new Vector2(-6, 0); cshade.localScale = new Vector3(1, -1, 1);
+            mapCardName = Label(card, "", bodyBold, 26, Color.white); Place(mapCardName.rectTransform, new Vector2(0, 0), new Vector2(20, 14), new Vector2(360, 34), new Vector2(0, 0));
+            var arrow = Label(card, "›", bodyBold, 44, Color.white, TextAnchor.MiddleRight); Place(arrow.rectTransform, new Vector2(1, 0), new Vector2(-18, 10), new Vector2(40, 40), new Vector2(1, 0));
+            Btn(card, () => SetRegion((region + 1) % Mathf.Max(1, mapNames?.Length ?? 1)));
+
+            // right: region strip
+            int n = mapThumbs?.Length ?? 0;
+            for (int i = 0; i < n; i++)
+            {
+                int idx = i;
+                var f = Panel(lobby, "Region", new Color(1, 1, 1, 0.2f), round); Place(f, new Vector2(1, 1), new Vector2(-24, -100 - i * 184), new Vector2(300, 172), new Vector2(1, 1));
+                var img = Panel(f, "Img", Color.white).GetComponent<Image>(); img.sprite = S(mapThumbs[i]); Fill(img.rectTransform, 4);
+                var nm = Label(f, mapNames[i].ToUpper(), bodyBold, 18, Color.white); Place(nm.rectTransform, new Vector2(0, 0), new Vector2(14, 6), new Vector2(270, 24), new Vector2(0, 0));
+                nm.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(1, -1);
+                regionFrames.Add(f.GetComponent<Image>()); Btn(f, () => SetRegion(idx));
+            }
+            SetRegion(Mathf.Clamp(PlayerPrefs.GetInt("kryvon.region", 0), 0, Mathf.Max(0, n - 1)));
+
+            // squad name tags (positioned every frame over the heads)
+            if (tagAnchors != null)
+                for (int i = 0; i < tagAnchors.Length; i++)
+                {
+                    var tg = Panel(lobby, "Tag", new Color(0.05f, 0.06f, 0.08f, 0.75f), round); tg.sizeDelta = new Vector2(210, 40); tg.pivot = new Vector2(0.5f, 0);
+                    var dot = Panel(tg, "Ready", new Color(0.35f, 0.9f, 0.45f), pill); Place(dot, new Vector2(0, 0.5f), new Vector2(12, 0), new Vector2(12, 12), new Vector2(0, 0.5f));
+                    var tl = Label(tg, tagNames != null && i < tagNames.Length ? tagNames[i] : "PLAYER", bodyBold, 20, i == 0 ? Gold : Color.white); tl.rectTransform.offsetMin = new Vector2(32, 0);
+                    tags.Add((tagAnchors[i], tg));
+                }
+
+            // hero switch under the player (keeps the earlier picker)
+            heroName = Label(lobby, "", display, 46, Color.white, TextAnchor.MiddleCenter); Place(heroName.rectTransform, new Vector2(0.5f, 0), new Vector2(-40, 70), new Vector2(500, 56));
+            heroRole = Label(lobby, "", bodyBold, 18, Gold, TextAnchor.MiddleCenter); Place(heroRole.rectTransform, new Vector2(0.5f, 0), new Vector2(-40, 40), new Vector2(600, 26));
+            heroBio = Label(lobby, "", body, 1, Color.clear); heroBio.gameObject.SetActive(false);
             foreach (var (glyph, dir) in new[] { ("‹", -1), ("›", 1) })
             {
-                var a = Panel(lobby, "Arrow", Ink, pill); Place(a, new Vector2(0.5f, 0), new Vector2(dir * 420, 250), new Vector2(70, 70));
-                Label(a, glyph, bodyBold, 56, Gold, TextAnchor.MiddleCenter);
+                var a = Panel(lobby, "Arrow", new Color(0.05f, 0.06f, 0.08f, 0.8f), pill); Place(a, new Vector2(0.5f, 0), new Vector2(-40 + dir * 300, 60), new Vector2(58, 58));
+                Label(a, glyph, bodyBold, 46, Gold, TextAnchor.MiddleCenter);
                 Btn(a, () => ShowHero((hero + dir + heroes.Length) % heroes.Length));
             }
-
-            // map card + modes + START
-            var map = Panel(lobby, "MapCard", Ink, round); Place(map, new Vector2(1, 0), new Vector2(-48, 196), new Vector2(460, 120), new Vector2(1, 0));
-            var mapAccent = Panel(map, "Accent", GoldDeep); Place(mapAccent, new Vector2(0, 0.5f), Vector2.zero, new Vector2(6, 120), new Vector2(0, 0.5f));
-            var mt = Label(map, "BILAD AL-SHAM", display, 46, Color.white); Place(mt.rectTransform, new Vector2(0, 1), new Vector2(26, -10), new Vector2(420, 52), new Vector2(0, 1));
-            var ms = Label(map, "2.4 KM  ·  100 PLAYERS  ·  PETRA · JERASH · 3 CITIES", body, 18, Dim); Place(ms.rectTransform, new Vector2(0, 1), new Vector2(28, -66), new Vector2(420, 26), new Vector2(0, 1));
-            for (int i = 0; i < Modes.Length; i++)
-            {
-                int idx = i;
-                var chip = Panel(lobby, "Mode" + Modes[i], Ink, pill); Place(chip, new Vector2(1, 0), new Vector2(-48 - (2 - i) * 156, 330), new Vector2(146, 48), new Vector2(1, 0));
-                Label(chip, Modes[i], bodyBold, 22, Color.white, TextAnchor.MiddleCenter);
-                modeChips.Add(chip.GetComponent<Image>()); Btn(chip, () => SetMode(idx));
-            }
-            SetMode(PlayerPrefs.GetInt("kryvon.mode", 2));
-            var startGlow = Panel(lobby, "StartGlow", new Color(1f, 0.6f, 0.15f, 0.35f), glow); Place(startGlow, new Vector2(1, 0), new Vector2(-10, 30), new Vector2(560, 210), new Vector2(1, 0));
-            StartCoroutine(Pulse(startGlow.GetComponent<Image>()));
-            var start = Panel(lobby, "Start", Gold, round); Place(start, new Vector2(1, 0), new Vector2(-48, 56), new Vector2(460, 120), new Vector2(1, 0));
-            var shine = Panel(start, "Shine", new Color(1, 1, 1, 0.25f), round); shine.anchorMin = new Vector2(0, 0.5f); shine.anchorMax = Vector2.one; shine.offsetMin = new Vector2(4, 0); shine.offsetMax = new Vector2(-4, -4);
-            Label(start, "START", display, 80, new Color(0.14f, 0.08f, 0.01f), TextAnchor.MiddleCenter);
-            Btn(start, StartMatch);
-
-            // tip ticker
-            tip = Label(lobby, "", body, 19, new Color(1, 1, 1, 0.55f)); Place(tip.rectTransform, new Vector2(0, 0), new Vector2(66, 42), new Vector2(1000, 30), new Vector2(0, 0));
+            tip = Label(lobby, "", body, 18, new Color(1, 1, 1, 0.6f), TextAnchor.MiddleCenter); Place(tip.rectTransform, new Vector2(0.5f, 0), new Vector2(-40, 12), new Vector2(1000, 26));
             StartCoroutine(Tips_());
+        }
+
+        void Tab(int i)
+        {
+            for (int k = 0; k < tabBgs.Count; k++) { tabBgs[k].color = k == i ? Gold : new Color(0, 0, 0, 0.001f); tabBgs[k].GetComponentInChildren<Text>().color = k == i ? new Color(0.12f, 0.08f, 0.02f) : Color.white; }
+            settings.gameObject.SetActive(i == 4);
+            comingSoon.gameObject.SetActive(i == 1 || i == 2 || i == 3);
+            if (i >= 1 && i <= 3) comingSoon.GetComponentInChildren<Text>().text = i == 1 ? "INVENTORY" : i == 2 ? "STORE" : "MISSIONS";
+        }
+        void SetRegion(int i)
+        {
+            region = i; PlayerPrefs.SetInt("kryvon.region", i);
+            if (mapThumbs != null && i < mapThumbs.Length) { mapCardImg.sprite = S(mapThumbs[i]); mapCardName.text = "⌖  " + mapNames[i]; }
+            for (int k = 0; k < regionFrames.Count; k++) regionFrames[k].color = k == i ? Gold : new Color(1, 1, 1, 0.2f);
+        }
+        void LateUpdate()
+        {
+            var cam = Camera.main; if (!cam) return;
+            foreach (var (t, r) in tags)
+            {
+                if (!t || !t.gameObject.activeInHierarchy) { r.gameObject.SetActive(false); continue; }
+                var sp = cam.WorldToScreenPoint(t.position + Vector3.up * 0.35f);
+                r.gameObject.SetActive(sp.z > 0);
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(lobby, sp, null, out var lp);
+                r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f); r.anchoredPosition = lp;
+            }
         }
 
         IEnumerator Pulse(Image i) { while (true) { i.color = new Color(1f, 0.6f, 0.15f, 0.22f + 0.16f * Mathf.Sin(Time.time * 2.4f)); yield return null; } }
@@ -218,8 +272,8 @@ namespace Kryvon
         }
         void SetMode(int i)
         {
-            mode = Mathf.Clamp(i, 0, 2); PlayerPrefs.SetInt("kryvon.mode", mode);
-            for (int k = 0; k < modeChips.Count; k++) { modeChips[k].color = k == mode ? GoldDeep : Ink; }
+            mode = Mathf.Clamp(i, 0, 2); PlayerPrefs.SetInt("kryvon.queue", mode);
+            for (int k = 0; k < modeChips.Count; k++) { modeChips[k].color = k == mode ? new Color(0.86f, 0.55f, 0.16f, 0.9f) : new Color(0.05f, 0.06f, 0.08f, 0.82f); }
         }
         void ShowHero(int i, bool instant = false)
         {
@@ -290,7 +344,7 @@ namespace Kryvon
             var m = UnityEngine.InputSystem.Mouse.current;
             bool overUI = EventSystem.current && EventSystem.current.IsPointerOverGameObject();
             if (m != null && m.leftButton.isPressed && !overUI) spinVel = -m.delta.ReadValue().x * 0.35f;
-            else spinVel = Mathf.Lerp(spinVel, 9f * Time.deltaTime, Time.deltaTime * 1.5f);   // slow idle spin
+            else spinVel = Mathf.Lerp(spinVel, 0f, Time.deltaTime * 3f);   // slow idle spin
             spin += spinVel; turntable.localRotation = Quaternion.Euler(0, 180 + Mathf.Sin(Time.time * 0.25f) * 12f + spin, 0);
         }
     }

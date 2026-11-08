@@ -20,44 +20,13 @@ namespace Kryvon.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             Material M(string n) => AssetDatabase.LoadAssetAtPath<Material>($"{Root}/Materials/{n}.mat");
 
-            // ---- stage ----
-            var stageMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            stageMat.SetColor("_BaseColor", new Color(0.09f, 0.09f, 0.1f)); stageMat.SetFloat("_Smoothness", 0.75f); stageMat.SetFloat("_Metallic", 0.6f);
-            AssetDatabase.DeleteAsset(Root + "/Materials/M_Stage.mat"); AssetDatabase.CreateAsset(stageMat, Root + "/Materials/M_Stage.mat");
-            var ringMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            ringMat.SetColor("_BaseColor", new Color(0.2f, 0.12f, 0.02f)); ringMat.EnableKeyword("_EMISSION"); ringMat.SetColor("_EmissionColor", new Color(1f, 0.62f, 0.18f) * 3.2f);
-            AssetDatabase.DeleteAsset(Root + "/Materials/M_StageRing.mat"); AssetDatabase.CreateAsset(ringMat, Root + "/Materials/M_StageRing.mat");
-            var floor = GameObject.CreatePrimitive(PrimitiveType.Plane); floor.name = "Floor"; floor.transform.localScale = Vector3.one * 30;
-            floor.GetComponent<Renderer>().sharedMaterial = M("M_Asphalt") ?? stageMat;
-            var podium = GameObject.CreatePrimitive(PrimitiveType.Cylinder); podium.name = "Podium"; podium.transform.position = new Vector3(0, 0.08f, 0); podium.transform.localScale = new Vector3(2.6f, 0.08f, 2.6f);
-            podium.GetComponent<Renderer>().sharedMaterial = stageMat;
-            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder); ring.name = "Ring"; ring.transform.position = new Vector3(0, 0.07f, 0); ring.transform.localScale = new Vector3(2.75f, 0.06f, 2.75f);
-            ring.GetComponent<Renderer>().sharedMaterial = ringMat;
-
-            // ---- backdrop: the street and buildings, far and soft ----
-            var back = new GameObject("Backdrop").transform;
-            string[] bld = { "h_tower", "h_apartment", "h_oldstone", "h_mosque", "h_shops", "h_apartment", "h_villa", "h_tower" };
-            for (int i = 0; i < bld.Length; i++)
-            {
-                var src = AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Models/Buildings/{bld[i]}.glb"); if (!src) continue;
-                var g = (GameObject)PrefabUtility.InstantiatePrefab(src, back);
-                var rs = g.GetComponentsInChildren<Renderer>(); var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
-                float h = bld[i] == "h_tower" ? 22 : bld[i] == "h_mosque" ? 17 : 12; g.transform.localScale = Vector3.one * (h / b.size.y);
-                b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
-                float x = -46 + i * 13f, z = 26 + (i % 2) * 6;
-                g.transform.position += new Vector3(x - b.center.x, -b.min.y, z - b.center.z); g.transform.rotation = Quaternion.Euler(0, 180, 0);
-            }
-            foreach (var (m, p, y) in new[] { ("v_pickup", new Vector3(-6.5f, 0, 7), 35f), ("v_armored", new Vector3(7.5f, 0, 9), -30f) })
-            {
-                var src = AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Models/Vehicles/{m}.glb"); if (!src) continue;
-                var g = (GameObject)PrefabUtility.InstantiatePrefab(src, back);
-                var rs = g.GetComponentsInChildren<Renderer>(); var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
-                g.transform.localScale = Vector3.one * (5f / b.size.z); b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
-                g.transform.position += p - new Vector3(b.center.x, b.min.y, b.center.z); g.transform.RotateAround(p, Vector3.up, y);
-            }
+            // ---- the forward operating base and the old city behind it ----
+            KryvonWorld.BuildBase(Vector3.zero);
+            var floorShadow = GameObject.CreatePrimitive(PrimitiveType.Plane); floorShadow.name = "Ground"; floorShadow.transform.position = new Vector3(0, -0.3f, 60); floorShadow.transform.localScale = Vector3.one * 60;
+            floorShadow.GetComponent<Renderer>().sharedMaterial = M("M_Sand") ?? M("M_BaseConcrete");
 
             // ---- heroes on the turntable ----
-            var turn = new GameObject("Turntable").transform; turn.position = new Vector3(0, 0.16f, 0);
+            var turn = new GameObject("Turntable").transform; turn.position = new Vector3(0, 0.02f, -4f);
             var info = new (string id, string name, string role, string bio)[] {
                 ("sara", "SARA", "SNIPER  ·  JORDANIAN SPECIAL FORCES", "Patient, precise – she never needs a second shot."),
                 ("hamza", "HAMZA", "ASSAULT  ·  BREACHER", "First through the door, last to leave the fight."),
@@ -85,19 +54,35 @@ namespace Kryvon.EditorTools
                 heroes.Add(new KryvonLobby.Hero { id = h.id, name = h.name, role = h.role, bio = h.bio, model = pivot });
             }
 
+            // ---- the squad: three friends beside the player, with name tags ----
+            var anchors = new System.Collections.Generic.List<Transform>();
+            var headP = new GameObject("PlayerHead").transform; headP.SetParent(turn, false); headP.localPosition = Vector3.up * 1.95f; anchors.Add(headP);
+            foreach (var (id, pos, yaw) in new[] { ("heavy", new Vector3(-2.3f, 0.02f, -2.6f), 165f), ("medic", new Vector3(2.4f, 0.02f, -2.5f), 195f), ("recon", new Vector3(-4.4f, 0.02f, -0.9f), 160f) })
+            {
+                var src = AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Models/Characters/{id}.glb"); if (!src) continue;
+                var pivot = new GameObject("Friend_" + id); pivot.transform.position = pos; pivot.transform.rotation = Quaternion.Euler(0, yaw, 0);
+                var g = (GameObject)PrefabUtility.InstantiatePrefab(src, pivot.transform);
+                var rs = g.GetComponentsInChildren<Renderer>(); var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+                g.transform.localScale = Vector3.one * (1.85f / b.size.y); b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+                g.transform.position += new Vector3(pos.x - b.center.x, pos.y - b.min.y, pos.z - b.center.z);
+                var ctrl = KryvonPlay.BuildController(id);
+                if (ctrl) { var an = g.GetComponentInChildren<Animator>() ?? g.AddComponent<Animator>(); an.runtimeAnimatorController = ctrl; an.applyRootMotion = false; }
+                var head = new GameObject("Head").transform; head.SetParent(pivot.transform, false); head.localPosition = Vector3.up * 1.95f; anchors.Add(head);
+            }
+
             // ---- light: warm key, cool rim, soft fill, sunset sky ----
-            var sun = new GameObject("Key").AddComponent<Light>(); sun.type = LightType.Directional; sun.color = new Color(1f, 0.74f, 0.5f); sun.intensity = 2.2f; sun.shadows = LightShadows.Soft;
-            sun.transform.rotation = Quaternion.Euler(18, -35, 0); sun.gameObject.AddComponent<UniversalAdditionalLightData>(); RenderSettings.sun = sun;
+            var sun = new GameObject("Key").AddComponent<Light>(); sun.type = LightType.Directional; sun.color = new Color(1f, 0.88f, 0.72f); sun.intensity = 2.6f; sun.shadows = LightShadows.Soft;
+            sun.transform.rotation = Quaternion.Euler(32, -40, 0); sun.gameObject.AddComponent<UniversalAdditionalLightData>(); RenderSettings.sun = sun;
             var rim = new GameObject("Rim").AddComponent<Light>(); rim.type = LightType.Spot; rim.color = new Color(0.45f, 0.65f, 1f); rim.intensity = 60; rim.range = 14; rim.spotAngle = 40;
             rim.transform.position = new Vector3(1.8f, 3.4f, 3.2f); rim.transform.LookAt(new Vector3(0, 1.2f, 0)); rim.gameObject.AddComponent<UniversalAdditionalLightData>();
             var fill = new GameObject("Fill").AddComponent<Light>(); fill.type = LightType.Point; fill.color = new Color(1f, 0.85f, 0.7f); fill.intensity = 4; fill.range = 8;
             fill.transform.position = new Vector3(-2.2f, 1.6f, -3f); fill.gameObject.AddComponent<UniversalAdditionalLightData>();
             var hdr = AssetDatabase.LoadAssetAtPath<Cubemap>($"{Root}/ThirdParty/PolyHaven/sky_partly_cloudy_2k.hdr");
             var sky = new Material(Shader.Find(hdr ? "Skybox/Cubemap" : "Skybox/Procedural"));
-            if (hdr) { sky.SetTexture("_Tex", hdr); sky.SetFloat("_Exposure", 0.55f); sky.SetFloat("_Rotation", 120); sky.SetColor("_Tint", new Color(0.62f, 0.45f, 0.36f)); }
+            if (hdr) { sky.SetTexture("_Tex", hdr); sky.SetFloat("_Exposure", 1.0f); sky.SetFloat("_Rotation", 120); sky.SetColor("_Tint", new Color(0.55f, 0.52f, 0.5f)); }
             AssetDatabase.DeleteAsset(Root + "/Materials/M_LobbySky.mat"); AssetDatabase.CreateAsset(sky, Root + "/Materials/M_LobbySky.mat");
             RenderSettings.skybox = sky; RenderSettings.ambientMode = AmbientMode.Skybox; RenderSettings.ambientIntensity = 0.9f;
-            RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Exponential; RenderSettings.fogDensity = 0.018f; RenderSettings.fogColor = new Color(0.55f, 0.38f, 0.28f);
+            RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Exponential; RenderSettings.fogDensity = 0.0035f; RenderSettings.fogColor = new Color(0.78f, 0.74f, 0.66f);
             DynamicGI.UpdateEnvironment();
 
             // ---- post ----
@@ -106,15 +91,15 @@ namespace Kryvon.EditorTools
             T Add<T>() where T : VolumeComponent { var c = prof.Add<T>(true); c.name = typeof(T).Name; AssetDatabase.AddObjectToAsset(c, prof); return c; }
             Add<Tonemapping>().mode.Override(TonemappingMode.ACES);
             var bl = Add<Bloom>(); bl.intensity.Override(1.1f); bl.threshold.Override(0.9f); bl.scatter.Override(0.75f);
-            var dof = Add<DepthOfField>(); dof.mode.Override(DepthOfFieldMode.Bokeh); dof.focusDistance.Override(5.4f); dof.aperture.Override(2.2f); dof.focalLength.Override(70f);
+            var dof = Add<DepthOfField>(); dof.mode.Override(DepthOfFieldMode.Bokeh); dof.focusDistance.Override(8.5f); dof.aperture.Override(5.6f); dof.focalLength.Override(40f);
             var ca = Add<ColorAdjustments>(); ca.contrast.Override(20f); ca.saturation.Override(8f); ca.postExposure.Override(0.1f);
             var vg = Add<Vignette>(); vg.intensity.Override(0.35f); vg.smoothness.Override(0.5f);
             Add<FilmGrain>().intensity.Override(0.15f);
             var vol = new GameObject("Post").AddComponent<Volume>(); vol.isGlobal = true; vol.sharedProfile = prof;
 
             // ---- camera ----
-            var cam = new GameObject("Main Camera").AddComponent<Camera>(); cam.tag = "MainCamera"; cam.fieldOfView = 30;
-            cam.transform.position = new Vector3(0, 1.3f, -5.4f); cam.transform.LookAt(new Vector3(0, 1.05f, 0));
+            var cam = new GameObject("Main Camera").AddComponent<Camera>(); cam.tag = "MainCamera"; cam.fieldOfView = 50; cam.farClipPlane = 2000;
+            cam.transform.position = new Vector3(-0.6f, 1.75f, -12.5f); cam.transform.LookAt(new Vector3(1.2f, 5.5f, 30f));
             var cd = cam.gameObject.AddComponent<UniversalAdditionalCameraData>(); cd.renderPostProcessing = true; cd.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
             cam.gameObject.AddComponent<AudioListener>();
 
@@ -134,6 +119,11 @@ namespace Kryvon.EditorTools
             so.FindProperty("body").objectReferenceValue = F("Rajdhani-SemiBold.ttf");
             so.FindProperty("bodyBold").objectReferenceValue = F("Rajdhani-SemiBold.ttf");
             so.FindProperty("turntable").objectReferenceValue = turn;
+            var ta = so.FindProperty("tagAnchors"); ta.arraySize = anchors.Count; for (int i = 0; i < anchors.Count; i++) ta.GetArrayElementAtIndex(i).objectReferenceValue = anchors[i];
+            var tn = so.FindProperty("tagNames"); string[] names = { "HAMZA RAJEH", "ZAIN", "OMAR", "LAYLA" }; tn.arraySize = anchors.Count; for (int i = 0; i < anchors.Count; i++) tn.GetArrayElementAtIndex(i).stringValue = names[i];
+            string[] mapFiles = { "m0_damascus", "m1_petra", "m2_jerash", "m3_amman", "m4_outskirts" }, mapTitles = { "Damascus Quarter", "Petra", "Jerash", "Amman Towns", "The Outskirts" };
+            var mt = so.FindProperty("mapThumbs"); mt.arraySize = mapFiles.Length; var mn = so.FindProperty("mapNames"); mn.arraySize = mapFiles.Length;
+            for (int i = 0; i < mapFiles.Length; i++) { mt.GetArrayElementAtIndex(i).objectReferenceValue = AssetDatabase.LoadAssetAtPath<Texture2D>($"{Root}/UI/Maps/{mapFiles[i]}.png"); mn.GetArrayElementAtIndex(i).stringValue = mapTitles[i]; }
             so.FindProperty("clickSound").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactGeneric_light_000.ogg");
             so.FindProperty("ambience").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/Audio/amb_wind.wav");
             so.ApplyModifiedPropertiesWithoutUndo();

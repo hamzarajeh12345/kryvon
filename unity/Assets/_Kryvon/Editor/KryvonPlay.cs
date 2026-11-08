@@ -211,6 +211,7 @@ namespace Kryvon.EditorTools
             KryvonWorld.MakeGrave(player, 8f);
             new GameObject("KillFeed").AddComponent<KryvonKillFeed>();
             var gearC = player.AddComponent<KryvonGear>(); player.AddComponent<KryvonLootLabels>();
+            KryvonWorld.SetupTactical(player, A);
             Set(gearC, "useSound", AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactSoft_heavy_000.ogg"));
             Set(gearC, "doneSound", AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactGeneric_light_000.ogg"));
             var hudC = player.AddComponent<KryvonHUD>(); Set(hudC, "font", AssetDatabase.LoadAssetAtPath<Font>($"{Root}/ThirdParty/Fonts/Rajdhani-SemiBold.ttf"));

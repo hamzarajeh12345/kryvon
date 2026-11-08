@@ -17,6 +17,7 @@ namespace Kryvon
         [SerializeField] float maxHp = 1000f;
         [SerializeField, Range(0, 0.95f)] float bulletResist = 0f;   // Jawad: 0.8
         public float Hp { get; private set; } = -1; public bool Wrecked { get; private set; }
+        public bool TyresBlown { get; private set; }
         public float Speed { get; private set; }
         public GameObject Driver { get; private set; }
         AudioSource eng; float yaw, roll; Collider[] own; readonly RaycastHit[] hits = new RaycastHit[8];
@@ -90,7 +91,9 @@ namespace Kryvon
                 throttle = mv.y; steer = mv.x;
                 var kb = Keyboard.current; hand = kb != null && kb.spaceKey.isPressed; boost = input && input.SprintHeld;
             }
-            float top = maxSpeed * (boost ? 1.18f : 1f), dt = Time.deltaTime;
+            if (!TyresBlown) foreach (var sp in KryvonSpikeStrip.All) if (sp.Area.Contains(new Vector3(transform.position.x, sp.Area.center.y, transform.position.z)) && Mathf.Abs(Speed) > 2f) { TyresBlown = true; if (crash) AudioSource.PlayClipAtPoint(crash, transform.position, 0.8f); KryvonFX.Dust(transform.position); }
+            if (TyresBlown) steer += Mathf.Sin(Time.time * 9f) * 0.35f * Mathf.Clamp01(Mathf.Abs(Speed) / 10f);   // wobble on flat tyres
+            float top = maxSpeed * (boost ? 1.18f : 1f) * (TyresBlown ? 0.35f : 1f), dt = Time.deltaTime;
             if (throttle > 0) Speed = Speed < 0 ? Speed + brake * dt : Mathf.Min(top, Speed + accel * throttle * dt * (boost ? 1.3f : 1f));
             else if (throttle < 0) Speed = Speed > 0 ? Speed - brake * dt : Mathf.Max(-reverse, Speed + accel * throttle * dt);
             else Speed = Mathf.MoveTowards(Speed, 0, (Driver ? 3f : 12f) * dt);

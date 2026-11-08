@@ -27,6 +27,9 @@ namespace Kryvon
         public static void Dust(Vector3 p) => Burst(p, 30, new Color(0.7f, 0.64f, 0.52f, 0.6f), 1.6f, 0.5f, 1.4f, -0.05f);
         public static void Smoke(Vector3 p) => Burst(p, 3, new Color(0.9f, 0.12f, 0.08f, 0.55f), 0.8f, 1.6f, 3.5f, -0.08f);
         public static void Fire(Vector3 p) { Burst(p, 60, new Color(1f, 0.55f, 0.15f, 0.9f), 6f, 0.9f, 0.9f, -0.2f); Burst(p, 40, new Color(0.15f, 0.13f, 0.12f, 0.8f), 3f, 2.2f, 3.5f, -0.15f); }
+        public static void Flame(Vector3 p) => Burst(p, 5, new Color(1f, 0.5f, 0.12f, 0.85f), 1.6f, 0.55f, 0.7f, -0.6f);
+        public static void SmokeCloud(Vector3 p, float k) => Burst(p + Vector3.up * 0.5f, Mathf.Max(1, (int)(6 * k)), new Color(0.82f, 0.82f, 0.8f, 0.9f), 2.2f, 4.5f, 9f, -0.04f);
+        public static void Trail(Vector3 p, bool fire) => Burst(p, 1, fire ? new Color(1f, 0.6f, 0.2f, 0.8f) : new Color(0.85f, 0.85f, 0.85f, 0.6f), 0.2f, 0.18f, 0.5f, 0f);
         public static void Glass(Vector3 p) => Burst(p, 45, new Color(0.8f, 0.9f, 0.95f, 0.85f), 3.5f, 0.07f, 1.1f, 1.4f);
     }
 }

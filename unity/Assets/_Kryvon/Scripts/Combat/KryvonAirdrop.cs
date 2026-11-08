@@ -15,13 +15,8 @@ namespace Kryvon
 
         void Awake() => gear = GetComponent<KryvonGear>() ?? gameObject.AddComponent<KryvonGear>();
 
-        void Update()
-        {
-            var kb = Keyboard.current;
-            if (kb == null || !kb.gKey.wasPressedThisFrame || gear.flares <= 0 || !crateTemplate) return;
-            gear.flares--;
-            StartCoroutine(Drop(transform.position + transform.forward * 25f));
-        }
+        /// fired from the throwables wheel (Flare Gun)
+        public void Call(Vector3 at) { if (crateTemplate) StartCoroutine(Drop(at)); }
 
         IEnumerator Drop(Vector3 at)
         {

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Kryvon
 {
-    public enum LootKind { Weapon, Ammo, Medkit, Bandage, Vest, Helmet, Backpack, Drink, Syringe, Grenade, Scope, FlareGun, FirstAid, Painkiller }
+    public enum LootKind { Weapon, Ammo, Medkit, Bandage, Vest, Helmet, Backpack, Drink, Syringe, Grenade, Scope, FlareGun, FirstAid, Painkiller, Molotov, SmokeGrenade, Flashbang, SpikeStrip, Shield, Ghillie, CloakDevice }
 
     public class KryvonLoot : MonoBehaviour
     {
@@ -36,12 +36,20 @@ namespace Kryvon
             LootKind.Drink => "Energy Drink  (+30 boost)",
             LootKind.Syringe => "Adrenaline Syringe  (full boost)",
             LootKind.Grenade => "Frag Grenade",
+            LootKind.Molotov => "Molotov Cocktail",
+            LootKind.SmokeGrenade => "Smoke Grenade",
+            LootKind.Flashbang => "Flashbang",
+            LootKind.SpikeStrip => "Spike Strip  (Y to lay)",
+            LootKind.Shield => "Deployable Shield  (U to plant)",
+            LootKind.Ghillie => "LEVANT GHILLIE SUIT",
+            LootKind.CloakDevice => "SHADOW CLOAK  (X, 3 charges)",
             LootKind.FlareGun => "FLARE GUN  (G = call a supply drop)",
             LootKind.Scope => $"{(level >= 3 ? "8x" : level == 2 ? "4x" : "2x")} Scope",
             _ => label,
         };
 
         /// returns true when the item was used up
+        static KryvonThrowables T(GameObject p) => p.GetComponent<KryvonThrowables>() ?? p.AddComponent<KryvonThrowables>();
         public static Color AmmoColor(AmmoType t) => t switch { AmmoType.A556 => new Color(0.35f, 0.85f, 0.35f), AmmoType.A762 => new Color(0.95f, 0.75f, 0.25f), AmmoType.A9mm => new Color(0.35f, 0.6f, 1f), AmmoType.Gauge12 => new Color(1f, 0.32f, 0.28f), AmmoType.A300 => new Color(0.8f, 0.45f, 1f), _ => Color.white };
         public static string AmmoName(AmmoType t) => t switch { AmmoType.A556 => "5.56mm", AmmoType.A762 => "7.62mm", AmmoType.A9mm => "9mm", AmmoType.A45 => ".45 ACP", AmmoType.Gauge12 => "12 Gauge", AmmoType.A300 => ".300 Magnum", _ => t.ToString() };
 
@@ -64,7 +72,14 @@ namespace Kryvon
                 case LootKind.Backpack: if (level <= gear.backpack) return false; gear.SetBackpack(level); return true;
                 case LootKind.Drink: gear.drinks++; return true;
                 case LootKind.Syringe: gear.syringes++; return true;
-                case LootKind.Grenade: gear.grenades++; return true;
+                case LootKind.Grenade: T(player).counts[(int)Throwable.Frag]++; return true;
+                case LootKind.Molotov: T(player).counts[(int)Throwable.Molotov]++; return true;
+                case LootKind.SmokeGrenade: T(player).counts[(int)Throwable.Smoke]++; return true;
+                case LootKind.Flashbang: T(player).counts[(int)Throwable.Flashbang]++; return true;
+                case LootKind.SpikeStrip: T(player).spikes++; return true;
+                case LootKind.Shield: T(player).shields++; return true;
+                case LootKind.Ghillie: { var st = player.GetComponent<KryvonStealth>(); if (!st || st.HasGhillie) return false; st.EquipGhillie(); return true; }
+                case LootKind.CloakDevice: { var st = player.GetComponent<KryvonStealth>(); if (!st) return false; st.cloakCharges += 3; return true; }
                 case LootKind.FlareGun: gear.flares++; return true;
                 case LootKind.Scope: return w && w.AttachScope(level >= 3 ? ScopeType.X8 : level == 2 ? ScopeType.X4 : ScopeType.X2);
             }

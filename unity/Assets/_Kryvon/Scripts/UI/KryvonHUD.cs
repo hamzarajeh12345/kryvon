@@ -7,14 +7,14 @@ namespace Kryvon
     public class KryvonHUD : MonoBehaviour
     {
         [SerializeField] Font font;
-        Health hp; KryvonGear gear; WeaponController weapons; SafeZone zone;
+        Health hp; KryvonGear gear; WeaponController weapons; SafeZone zone; KryvonThrowables thr; KryvonStealth st;
         GUIStyle s14, s18, s26, s34; Texture2D tex;
         static readonly Color Gold = new(1f, 0.78f, 0.32f), Panel = new(0, 0, 0, 0.55f);
 
         void Start()
         {
             hp = GetComponent<Health>(); gear = GetComponent<KryvonGear>(); weapons = GetComponent<WeaponController>();
-            zone = FindAnyObjectByType<SafeZone>();
+            zone = FindAnyObjectByType<SafeZone>(); thr = GetComponent<KryvonThrowables>(); st = GetComponent<KryvonStealth>();
             var dbg = FindAnyObjectByType<KryvonDebugHUD>(); if (dbg) dbg.enabled = false;   // replaced by this HUD
         }
         GUIStyle S(int size, TextAnchor a = TextAnchor.MiddleLeft, bool bold = true) => new(GUI.skin.label) { font = font, fontSize = size, alignment = a, fontStyle = bold ? FontStyle.Bold : FontStyle.Normal, normal = { textColor = Color.white } };
@@ -77,6 +77,29 @@ namespace Kryvon
                 GUI.Label(new Rect(W - 470, H - 170, 450, 40), $"{slot.ammo} / {weapons.Reserve(d.ammoType)}", s34);
                 GUI.color = Color.white;
                 GUI.Label(new Rect(W - 470, H - 135, 450, 22), $"{d.displayName.ToUpper()}   ·   {KryvonLoot.AmmoName(d.ammoType)}", new GUIStyle(s14) { alignment = TextAnchor.MiddleRight });
+            }
+
+            // ---- throwables + deployables ----
+            if (thr)
+            {
+                var tr = new Rect(W - 470, H - 210, 450, 30);
+                GUI.Label(tr, $"{KryvonThrowables.Names[(int)thr.Selected].ToUpper()} x{thr.Count(thr.Selected)}   ·   G throw  ·  T switch", new GUIStyle(s14) { alignment = TextAnchor.MiddleRight });
+                GUI.Label(new Rect(W - 470, H - 232, 450, 22), $"SPIKES x{thr.spikes} (Y)   SHIELD x{thr.shields} (U)", new GUIStyle(s14) { alignment = TextAnchor.MiddleRight, fontSize = 12 });
+                if (thr.Cook >= 0 && thr.Selected == Throwable.Frag)
+                {
+                    float left = Mathf.Max(0, 5f - thr.Cook);
+                    GUI.color = left < 1.5f ? new Color(1f, 0.3f, 0.25f) : Gold; GUI.Label(new Rect(cx - 100, H * 0.56f, 200, 30), $"COOKING  {left:0.0}s", s26); GUI.color = Color.white;
+                }
+            }
+            // ---- stealth ----
+            if (st)
+            {
+                var vr = new Rect(cx + 240, H - 66, 150, 22);
+                GUI.Label(vr, $"👁 VISIBILITY {Mathf.RoundToInt(st.Visibility * 100)}%", s14);
+                Box(new Rect(vr.x, vr.yMax, 140, 4), new Color(1, 1, 1, 0.15f)); Box(new Rect(vr.x, vr.yMax, 140 * st.Visibility, 4), st.Visibility < 0.35f ? new Color(0.4f, 0.9f, 0.5f) : Color.white);
+                string tags = (st.HasGhillie ? "GHILLIE  " : "") + (st.MudLeft > 0 ? $"MUD {st.MudLeft:0}s  " : "") + (st.Indoors ? "IN SHADOW  " : "") + (st.CloakLeft > 0 ? $"CLOAK {st.CloakLeft:0.0}s" : st.cloakCharges > 0 ? (st.CloakCooldown > 0 ? $"CLOAK {st.CloakCooldown:0}s" : $"CLOAK x{st.cloakCharges} (X)") : "");
+                GUI.Label(new Rect(cx + 240, H - 40, 400, 20), tags, new GUIStyle(s14) { fontSize = 12 });
+                if (st.RollProgress > 0) { var pr = new Rect(cx - 140, H * 0.62f, 280, 8); Box(pr, Panel); Box(new Rect(pr.x, pr.y, pr.width * st.RollProgress, pr.height), new Color(0.6f, 0.45f, 0.3f)); GUI.Label(new Rect(pr.x, pr.y - 30, pr.width, 26), "MUD CAMOUFLAGE", s26); }
             }
 
             // ---- zone + alive ----

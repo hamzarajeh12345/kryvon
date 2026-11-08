@@ -11,7 +11,7 @@ namespace Kryvon
         static string Icon(LootKind k) => k switch
         {
             LootKind.Weapon => "▲", LootKind.Ammo => "■", LootKind.Medkit or LootKind.Bandage or LootKind.Syringe or LootKind.Drink or LootKind.FirstAid or LootKind.Painkiller => "✚",
-            LootKind.Vest or LootKind.Helmet => "◆", LootKind.Backpack => "▣", LootKind.Grenade => "●", LootKind.Scope => "◎", LootKind.FlareGun => "✸", _ => "•",
+            LootKind.Vest or LootKind.Helmet => "◆", LootKind.Backpack => "▣", LootKind.Grenade => "●", LootKind.Scope => "◎", LootKind.FlareGun => "✸", LootKind.Molotov or LootKind.SmokeGrenade or LootKind.Flashbang => "●", LootKind.SpikeStrip or LootKind.Shield => "▬", LootKind.Ghillie or LootKind.CloakDevice => "◐", _ => "•",
         };
 
         void OnGUI()

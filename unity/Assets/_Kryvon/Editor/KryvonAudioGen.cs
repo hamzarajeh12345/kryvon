@@ -32,6 +32,10 @@ namespace Kryvon.EditorTools
             Click("ui_dry_fire", rng); Reload("reload", rng);
             Impact("impact_concrete", rng, 3200f); Impact("impact_body", rng, 500f);
             Engine("vehicle_engine", 2f);
+            Gun("boom_frag", rng, 2.4f, 38f, 0.35f, 1.8f, 1f);
+            Gun("bang_flash", rng, 1.2f, 160f, 1f, 0.6f, 1f);
+            Hiss("hiss_smoke", rng, 3f); Hiss("fire_loop", rng, 4f, true);
+            Ring("ring_ears", 5f);
             AssetDatabase.Refresh();
             foreach (var f in Directory.GetFiles(Dir, "*.wav"))
             {
@@ -142,6 +146,25 @@ namespace Kryvon.EditorTools
             int n = (int)(len * SR); var d = new float[n]; float ph = 0, ph2 = 0;
             for (int i = 0; i < n; i++) { ph += 2 * Mathf.PI * 42f / SR; ph2 += 2 * Mathf.PI * 84f / SR; d[i] = Mathf.Sign(Mathf.Sin(ph)) * 0.35f + Mathf.Sin(ph2) * 0.3f + Mathf.Sin(ph * 3) * 0.15f; }
             Normalize(d, 0.4f); Write(name, d);
+        }
+
+        static void Hiss(string name, System.Random r, float len, bool crackle = false)
+        {
+            int n = (int)(len * SR); var d = new float[n]; LP a = default, b = default;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR, w = Noise(r);
+                float v = crackle ? b.Run(w, Coef(700f)) * 0.8f + (r.NextDouble() < 0.0009 ? Noise(r) * 2.5f : 0) : (w - a.Run(w, Coef(2500f))) * Mathf.Clamp01(t * 4f) * Mathf.Clamp01((len - t) * 2f);
+                d[i] = v;
+            }
+            if (crackle) Loopify(d, SR / 2);
+            Normalize(d, crackle ? 0.5f : 0.6f); Write(name, d);
+        }
+        static void Ring(string name, float len)
+        {
+            int n = (int)(len * SR); var d = new float[n];
+            for (int i = 0; i < n; i++) { float t = i / (float)SR; d[i] = (Mathf.Sin(2 * Mathf.PI * 3800f * t) * 0.7f + Mathf.Sin(2 * Mathf.PI * 4100f * t) * 0.3f) * Mathf.Clamp01(t * 20f); }
+            Loopify(d, SR / 4); Normalize(d, 0.4f); Write(name, d);
         }
 
         static void Loopify(float[] d, int fade) { for (int i = 0; i < fade; i++) { float k = i / (float)fade; d[i] = d[i] * k + d[d.Length - fade + i] * (1 - k); } Array.Resize(ref d, d.Length); }

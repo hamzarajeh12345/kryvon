@@ -234,6 +234,10 @@ namespace Kryvon.EditorTools
             { LootKind.Backpack, ("l_backpack", 0.55f, 'y', 0f, new Vector3(-75, 0, 0)) }, { LootKind.Scope, ("l_scope", 0.32f, 'x', 0f, Vector3.zero) },
             { LootKind.FlareGun, ("l_flaregun", 0.3f, 'x', 0.02f, new Vector3(0, 0, 90)) },
             { LootKind.FirstAid, ("l_firstaid", 0.36f, 'x', 0f, Vector3.zero) }, { LootKind.Painkiller, ("l_painkiller", 0.09f, 'y', 0f, Vector3.zero) },
+            { LootKind.Molotov, ("l_molotov", 0.3f, 'y', 0f, new Vector3(0, 0, 90)) }, { LootKind.SmokeGrenade, ("l_smoke", 0.16f, 'y', 0f, Vector3.zero) },
+            { LootKind.Flashbang, ("l_flash", 0.14f, 'y', 0f, Vector3.zero) }, { LootKind.SpikeStrip, ("l_spikes", 0.6f, 'x', 0f, Vector3.zero) },
+            { LootKind.Shield, ("l_shield", 0.8f, 'x', 0f, new Vector3(-90, 0, 0)) }, { LootKind.Ghillie, ("l_backpack", 0.5f, 'y', 0f, new Vector3(-80, 0, 0)) },
+            { LootKind.CloakDevice, ("l_scope", 0.3f, 'x', 0f, Vector3.zero) },
         };
         static void DropLoot(Transform parent, Vector3 p) { lootSpotsUsed.Add((parent, p)); DropLoot(parent, p, null); }
         static void DropLoot(Transform parent, Vector3 p, LootKind? force)
@@ -255,6 +259,9 @@ namespace Kryvon.EditorTools
             else
             {
                 int level = lootTier == 1 ? (rng.NextDouble() < 0.1 ? 2 : 1) : lootTier == 2 ? (rng.NextDouble() < 0.45 ? 2 : 1) : (rng.NextDouble() < 0.4 ? 3 : 2);
+                if (k == LootKind.Grenade && force == null) { double gq = rng.NextDouble(); k = gq < 0.4 ? LootKind.Grenade : gq < 0.6 ? LootKind.Molotov : gq < 0.8 ? LootKind.SmokeGrenade : gq < 0.95 ? LootKind.Flashbang : LootKind.SpikeStrip; }
+                if (k == LootKind.Scope && force == null && rng.NextDouble() < 0.18) k = LootKind.Shield;
+                if (force == null && lootTier == 3 && rng.NextDouble() < 0.006) k = LootKind.CloakDevice;
                 if ((k == LootKind.Vest || k == LootKind.Helmet) && !File.Exists($"{Root}/Models/Loot/l_vest.glb")) g = ArmorModel(k, parent, p);
                 else
                 {
@@ -275,7 +282,8 @@ namespace Kryvon.EditorTools
                 l.rarity = k switch
                 {
                     LootKind.Vest or LootKind.Helmet or LootKind.Backpack or LootKind.Scope => level == 3 ? 3 : level == 2 ? 2 : 1,
-                    LootKind.Medkit or LootKind.Syringe => 2, LootKind.FirstAid or LootKind.Painkiller => 1, LootKind.Drink or LootKind.Grenade => 1, LootKind.FlareGun => 4, _ => 0,
+                    LootKind.Medkit or LootKind.Syringe => 2, LootKind.FirstAid or LootKind.Painkiller => 1,
+                    LootKind.Molotov or LootKind.SmokeGrenade or LootKind.Flashbang => 1, LootKind.SpikeStrip or LootKind.Shield => 2, LootKind.CloakDevice or LootKind.Ghillie => 4, LootKind.Drink or LootKind.Grenade => 1, LootKind.FlareGun => 4, _ => 0,
                 };
             }
             var glow = KryvonLoot.RarityColors[l.rarity];

@@ -253,6 +253,7 @@ namespace Kryvon.EditorTools
             Item(LootKind.Weapon, l => l.weapon = lmg); Item(LootKind.Ammo, l => { l.ammoType = lmg.ammoType; l.amount = 150; });
             Item(LootKind.Vest, l => l.level = 3); Item(LootKind.Helmet, l => l.level = 3); Item(LootKind.Backpack, l => l.level = 3);
             Item(LootKind.Scope, l => l.level = 3); Item(LootKind.Medkit, l => { }); Item(LootKind.Syringe, l => { }); Item(LootKind.Medkit, l => { });
+            Item(LootKind.Ghillie, l => { }); if (rng.NextDouble() < 0.5) Item(LootKind.CloakDevice, l => { });
             inv.SetActive(false);
             root.SetActive(false);
             return root;

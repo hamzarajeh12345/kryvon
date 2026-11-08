@@ -181,17 +181,26 @@ namespace Kryvon.EditorTools
             var squad = GameObject.Find("Squad");
             var model = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>($"{Root}/Models/Characters/{PlayerCharacter}.glb"), player.transform);
             FitHeight(model, 1.8f);
-            Animate(model, BuildController(PlayerCharacter));
-            AttachGun(model, "w_ar", 0.95f);
+            var hav = KryvonHumanoid.Available ? KryvonHumanoid.BuildAvatar(PlayerCharacter) : null;
+            if (hav != null)
+            {
+                var an = model.GetComponentInChildren<Animator>() ?? model.AddComponent<Animator>();
+                an.avatar = hav; an.runtimeAnimatorController = KryvonHumanoid.BuildController(); an.applyRootMotion = false; an.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                KryvonHumanoid.AttachGunAimed(model, an, "w_ar", 0.95f);
+            }
+            else { Animate(model, BuildController(PlayerCharacter)); AttachGun(model, "w_ar", 0.95f); }
             player.AddComponent<PlayerAnimatorBridge>();
 
+            var picker = player.AddComponent<KryvonLootPicker>(); Set(picker, "pickupSound", AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactSoft_heavy_000.ogg"));
             var fs = player.AddComponent<KryvonFootsteps>();
-            Set(fs, "hard", Enumerable.Range(0, 6).Select(i => (Object)A($"step_hard_{i}")).ToArray());
-            Set(fs, "dirt", Enumerable.Range(0, 6).Select(i => (Object)A($"step_dirt_{i}")).ToArray());
+            Object[] K(string prefix, string fallback) { var k = Enumerable.Range(0, 5).Select(i => (Object)AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/{prefix}_{i:000}.ogg")).Where(x => x != null).ToArray(); return k.Length > 0 ? k : Enumerable.Range(0, 6).Select(i => (Object)A($"{fallback}_{i}")).ToArray(); }
+            Set(fs, "hard", K("footstep_concrete", "step_hard"));
+            Set(fs, "dirt", K("footstep_grass", "step_dirt"));
             var flashGo = new GameObject("MuzzleLight"); flashGo.transform.SetParent(player.transform, false); flashGo.transform.localPosition = new Vector3(0.25f, 1.35f, 0.75f);
             var fl = flashGo.AddComponent<Light>(); fl.type = LightType.Point; fl.range = 6; fl.color = new Color(1f, 0.75f, 0.4f); fl.enabled = false;
             var mfx = player.AddComponent<KryvonMuzzleFX>();
-            Set(mfx, "flash", fl); Set(mfx, "source", src); Set(mfx, "impactHard", A("impact_concrete")); Set(mfx, "impactBody", A("impact_body"));
+            Set(mfx, "flash", fl); Set(mfx, "source", src); var kHard = AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactPlate_heavy_000.ogg"); var kBody = AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactPunch_heavy_000.ogg");
+            Set(mfx, "impactHard", kHard ? kHard : A("impact_concrete")); Set(mfx, "impactBody", kBody ? kBody : A("impact_body"));
 
             // ---------- the rest of the squad become live targets ----------
             if (squad != null)

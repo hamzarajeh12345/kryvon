@@ -24,7 +24,7 @@ MonoBehaviour:
   range: 350
   falloffStart: 0.6
   roundsPerMinute: 660
-  fireModes: 0000000002000000i
+  fireModes: 0200000000000000i
   burstCount: 3
   magazineSize: 30
   reloadSeconds: 2.1
@@ -58,7 +58,7 @@ MonoBehaviour:
   proneRecoilMultiplier: 0.65
   recoilRecovery: 0.6
   recoilResetSeconds: 0.35
-  defaultScope: 0
+  defaultScope: 1
   allowedScopes: 00000000010000000200000003000000040000000500000006000000i
   moveSpeedMultiplier: 1
   viewPrefab: {fileID: 0}

@@ -34,7 +34,12 @@ namespace Kryvon.EditorTools
             var squad = GameObject.Find("Squad").transform.Cast<Transform>()
                 .Where(t => !t.name.StartsWith("w_") && t.GetComponentInChildren<Animator>() != null)
                 .Select(t => (go: t.GetComponentInChildren<Animator>().gameObject, idle: Clip(t.name, "HumanSpIdle"), off: Random.value * 3f)).ToList();
-            var run = Clip(KryvonPlay.PlayerCharacter, "HumanSpRun"); var idle = Clip(KryvonPlay.PlayerCharacter, "HumanSpIdle");
+            var hum = playerAnim.GetComponent<Animator>().avatar != null && playerAnim.GetComponent<Animator>().avatar.isHuman ? KryvonHumanoid.Clips() : null;
+            AnimationClip HC(string n) => hum != null && hum.TryGetValue(n, out var c) ? c : null;
+            var run = HC("Jog_Fwd_Loop") ?? Clip(KryvonPlay.PlayerCharacter, "HumanSpRun"); var idle = HC("Pistol_Idle_Loop") ?? Clip(KryvonPlay.PlayerCharacter, "HumanSpIdle");
+            var aimC = HC("Pistol_Aim_Neutral"); var shootC = HC("Pistol_Shoot");
+            var pan = playerAnim.GetComponent<Animator>();
+            void PP(AnimationClip c, float tt) { if (c == null) return; if (hum != null) KryvonHumanoid.Pose(pan, c, tt); else c.SampleAnimation(playerAnim, tt); }
             var overrides = GameObject.Find("PlayOverrides")?.GetComponent<Volume>();
 
             float[] shots = { 13.6f, 13.72f, 13.84f, 13.96f, 14.9f, 15.02f, 15.14f, 15.26f, 15.38f, 16.4f };
@@ -64,7 +69,7 @@ namespace Kryvon.EditorTools
                     player.gameObject.SetActive(true);
                     float u = t - 5f, x = -25f + u * 5f;
                     player.position = new Vector3(x, 0.02f, -0.9f); player.rotation = Quaternion.Euler(0, 90, 0);
-                    if (run) run.SampleAnimation(playerAnim, u % run.length);
+                    PP(run, u % (run ? run.length : 1));
                     float sway = Mathf.Sin(u * 2.2f) * 0.15f;
                     camPos = player.position + new Vector3(-3.6f, 1.75f + sway * 0.3f, -1.1f + sway);
                     look = player.position + new Vector3(4f, 1.3f, 0.4f);
@@ -75,7 +80,10 @@ namespace Kryvon.EditorTools
                     float u = t - 13f;
                     player.position = new Vector3(15f, 0.02f, -0.9f);
                     player.rotation = Quaternion.Euler(0, Mathf.Lerp(90f, 20f, Mathf.SmoothStep(0, 1, u / 0.5f)), 0);
-                    if (idle) idle.SampleAnimation(playerAnim, u % idle.length);
+                    float lastShot = -9f; foreach (var s2 in shots) if (t >= s2) lastShot = s2;
+                    if (shootC && t - lastShot < 0.25f) PP(shootC, (t - lastShot) * 1.6f);
+                    else if (aimC && u > 0.4f) PP(aimC, 0.1f);
+                    else if (idle) PP(idle, u % idle.length);
                     float kick = 0f;
                     foreach (var s in shots) if (t >= s && t < s + 2f / FPS) { flash.enabled = true; flash.intensity = Random.Range(4f, 7f); }
                     foreach (var s in shots) if (t >= s) kick += Mathf.Exp(-(t - s) * 14f) * 0.05f;
@@ -85,7 +93,7 @@ namespace Kryvon.EditorTools
                 else                                                         // D: crane up over the town
                 {
                     float k = Mathf.SmoothStep(0, 1, (t - 17f) / 5f);
-                    if (idle) idle.SampleAnimation(playerAnim, (t - 17f) % idle.length);
+                    if (idle) PP(idle, (t - 17f) % idle.length);
                     camPos = Vector3.Lerp(new Vector3(24f, 2.2f, -10f), new Vector3(-6f, 32f, -46f), k);
                     look = Vector3.Lerp(new Vector3(14f, 1.5f, 0f), new Vector3(0f, 4f, 10f), k);
                 }
@@ -95,6 +103,7 @@ namespace Kryvon.EditorTools
                 File.WriteAllBytes(Path.Combine(outDir, $"f_{f:00000}.jpg"), tex.EncodeToJPG(93));
                 if (f % 60 == 0) Debug.Log($"KRYVON video: frame {f}/{frames}");
             }
+            KryvonHumanoid.EndPose();
             cam.targetTexture = null; Object.DestroyImmediate(rt);
             MixAudio(Path.Combine(outDir, "mix.wav"), steps, shots);
             Debug.Log("KRYVON video: frames + audio ready in " + outDir);

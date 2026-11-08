@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Kryvon.EditorTools
 {
-    public static class KryvonWorld
+    public static partial class KryvonWorld
     {
         const string Root = "Assets/_Kryvon";
         const float Size = 600f, HeightScale = 40f, Base = 6f;   // the town sits at y=0, which is Base metres above the terrain floor
@@ -160,6 +160,7 @@ namespace Kryvon.EditorTools
             terrain.detailObjectDistance = 200f; terrain.detailObjectDensity = 1f; terrain.heightmapPixelError = 4; terrain.basemapDistance = 2000;
             terrain.drawInstanced = true;
 
+            ScatterHouses(terrain, world);                            // enterable houses first, so grass/trees keep out of them
             GrassField(terrain, am, A, world);
 
             // ---------- dressing ----------

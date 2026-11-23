@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_tabl
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: tabl
-  displayName: Tabl
-  arabicName: Tabl
+  displayName: Thompson
+  arabicName: Thompson
   weaponClass: 1
   ammoType: 3
+  model: w_drum
+  modelLength: 0.85
   damage: 40
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

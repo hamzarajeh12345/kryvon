@@ -9,6 +9,132 @@ namespace Kryvon.EditorTools
 {
     public static partial class KryvonWorld
     {
+        public static void BuildMilitaryArea(Transform world, Terrain terrain, Vector2 centre)
+        {
+            rng = new System.Random(1946);
+            float Y(float x, float z) => terrain.SampleHeight(new Vector3(x, 0, z)) + terrain.transform.position.y;
+            var root = new GameObject("MilitaryCombatZone").transform;
+            root.SetParent(world, false);
+            root.position = new Vector3(centre.x, Y(centre.x, centre.y), centre.y);
+
+            var baseRoot = BuildBase(root.position);
+            baseRoot.SetParent(root, true);
+            baseRoot.name = "MilitaryBaseCompound";
+
+            var mid = 50000;
+            var concrete = PBRMat("M_MilitaryConcrete", "concrete_floor_02", new Color(0.72f, 0.73f, 0.70f), 5f);
+            var asphalt = PBRMat("M_MilitaryApron", "asphalt_02", new Color(0.35f, 0.37f, 0.38f), 7f);
+            var yellow = PBRMat("M_MilitaryMark", "concrete_floor_02", new Color(0.95f, 0.68f, 0.12f), 1f);
+            var plate = new Builder();
+            plate.Box(asphalt, new Vector3(0, -0.18f, 0), new Vector3(210, 0.36f, 150));
+            for (float x = -82; x <= 82; x += 20)
+                plate.Box(yellow, new Vector3(x, 0.03f, -48), new Vector3(10, 0.03f, 0.5f), false);
+            plate.Build("MilitaryApron", root, root.position, 0, ref mid);
+
+            void PutVehicle(string model, float dx, float dz, float yaw)
+            {
+                var v = MakeVehicle(model, root.TransformPoint(new Vector3(dx, 0.2f, dz)), yaw, root);
+                if (v) v.transform.position = new Vector3(v.transform.position.x, Y(v.transform.position.x, v.transform.position.z), v.transform.position.z);
+            }
+
+            PutVehicle("v_armored", -42, -22, 25);
+            PutVehicle("v_armored", -34, -12, 25);
+            PutVehicle("v_pickup", 38, -28, 210);
+            PutVehicle("v_pickup", 46, -18, 210);
+            PutVehicle("v_sedan", 55, 20, 160);
+            PutVehicle("v_jeep", -52, 28, 70);
+            PutVehicle("v_buggy", 18, 38, 130);
+            PutVehicle("v_minibus", 4, 42, 180);
+
+            // heavy combat tanks: two visible tracks, a hull, turret and cannon
+            void PutTank(float dx, float dz, float yaw)
+            {
+                var tank = new GameObject("MilitaryTank");
+                tank.transform.SetParent(root, false);
+                tank.transform.position = root.TransformPoint(new Vector3(dx, 0.25f, dz));
+                tank.transform.rotation = root.rotation * Quaternion.Euler(0, yaw, 0);
+                var hullMat = PBRMat("M_TankOlive", "concrete_floor_02", new Color(0.34f, 0.38f, 0.27f), 2f);
+                var trackMat = PBRMat("M_TankTracks", "concrete_floor_02", new Color(0.10f, 0.11f, 0.10f), 1f);
+                var b = new Builder();
+                b.Box(hullMat, new Vector3(0, 1.15f, 0), new Vector3(4.8f, 1.2f, 7.2f));
+                b.Box(trackMat, new Vector3(-2.55f, 0.65f, 0), new Vector3(0.7f, 1.3f, 7.0f));
+                b.Box(trackMat, new Vector3(2.55f, 0.65f, 0), new Vector3(0.7f, 1.3f, 7.0f));
+                b.Box(hullMat, new Vector3(0, 2.25f, -0.2f), new Vector3(3.2f, 1.15f, 3.6f));
+                b.Box(trackMat, new Vector3(0, 2.8f, -4.5f), new Vector3(0.45f, 0.45f, 5.2f));
+                b.Build("TankGeometry", tank.transform, tank.transform.position, tank.transform.eulerAngles.y, ref mid);
+            }
+            PutTank(-18, 24, 35);
+            PutTank(18, 24, 145);
+
+            // two parked jet aircraft on opposite taxi pads
+            foreach (var x in new[] { -78f, 78f })
+            {
+                var jet = Spawn("Vehicles/v_jet", 18f, 'z', root);
+                if (jet)
+                {
+                    jet.transform.position = root.TransformPoint(new Vector3(x, 1.1f, 18));
+                    jet.transform.rotation = root.rotation * Quaternion.Euler(0, x > 0 ? 20 : 200, 0);
+                    Collide(jet);
+                }
+            }
+
+            // compact housing row and separated houses around the apron
+            int meshId = 50000;
+            for (int i = -2; i <= 2; i++)
+            {
+                float x = i * 24f - 25f, z = -62f;
+                var b = new Builder();
+                var spots = HouseShape(b, 10f, 8f, i % 2 == 0 ? 2 : 1, 1.2f);
+                var house = b.Build("MilitaryHouse", root, new Vector3(root.position.x + x, Y(root.position.x + x, root.position.z + z) + 0.05f, root.position.z + z), i % 2 == 0 ? 180 : 0, ref meshId);
+                foreach (var s in spots)
+                {
+                    var p = house.transform.TransformPoint(s);
+                    DropLoot(root, p);
+                }
+            }
+
+            // hangars and high radar/control structures
+            foreach (var dx in new[] { -86f, -58f, 58f, 86f })
+            {
+                var hangar = Spawn("Props/p_hangar", 24f, 'x', root);
+                if (hangar)
+                {
+                    hangar.transform.position = root.TransformPoint(new Vector3(dx, 0, -2));
+                    hangar.transform.rotation = root.rotation * Quaternion.Euler(0, dx < 0 ? 180 : 0, 0);
+                    Collide(hangar);
+                }
+            }
+
+            for (int i = 0; i < 3; i++)
+            {
+                float dx = -20f + i * 20f;
+                var radar = new Builder();
+                radar.Box(concrete, new Vector3(dx, 4, 52), new Vector3(0.7f, 8, 0.7f));
+                radar.Box(concrete, new Vector3(dx, 9, 52), new Vector3(12, 0.25f, 0.25f));
+                radar.Build("RadarTower", root, root.position, 0, ref mid);
+            }
+
+            var fences = new GameObject("MilitaryFences").transform;
+            fences.SetParent(root, false);
+            for (float x = -100; x <= 100; x += 8)
+            {
+                Put("Props/p_barrier", root.position.x + x, root.position.z - 76, 0, 2f, 'x', false);
+                Put("Props/p_sandbags", root.position.x + x, root.position.z + 68, 90, 3.2f, 'x', false);
+            }
+            blocked.Add(new Rect(centre.x - 112, centre.y - 82, 224, 164));
+            Debug.Log("KRYVON: military combat zone ready — apron, hangars, radar towers, houses, aircraft and armoured vehicles");
+        }
+
+        static GameObject Put(string model, float x, float z, float yaw, float size, char axis, bool collide)
+        {
+            var g = Spawn(model, size, axis, null);
+            if (!g) return null;
+            g.transform.position = new Vector3(x, 0, z);
+            g.transform.rotation = Quaternion.Euler(0, yaw, 0);
+            if (collide) Collide(g);
+            return g;
+        }
+
         public static Transform BuildBase(Vector3 origin)
         {
             rng = new System.Random(77);
@@ -86,32 +212,36 @@ namespace Kryvon.EditorTools
             for (int i = 0; i < 6; i++) Put("Props/p_cypress", new Vector3(-64 + i * 3, 0, 52), 0, R(9, 13), 'y');
 
             // ---- the old city on the hill behind ----
-            var hill = new GameObject("CityHill").transform; hill.SetParent(root, false); hill.localPosition = new Vector3(0, 0, 150);
+            var hill = new GameObject("CityHill").transform; hill.SetParent(root, false); hill.localPosition = new Vector3(0, 0, 105); hill.localRotation = Quaternion.Euler(0, 180, 0);
             var hb = new Builder();
-            for (int k = 0; k < 6; k++) hb.Box(stone, new Vector3(R(-10, 10), 6 + k * 6, -k * 7), new Vector3(240 - k * 30, 12, 60), true);   // terraced hill
-            hb.Build("Terraces", hill, hill.position, 0, ref mid);
-            string[] cityKinds = { "h_oldstone", "h_villa", "h_shops", "h_apartment", "h_oldstone", "h_villa" };
+            // six stepped terraces climbing away from the base; each step is 14 m deep and 7 m higher
+            for (int k = 0; k < 6; k++) { float top = 8 + k * 7; hb.Box(stone, new Vector3(R(-6, 6), top / 2, -k * 14), new Vector3(240 - k * 30, top, 14.2f), true); }
+            hb.Build("Terraces", hill, hill.position, hill.eulerAngles.y, ref mid);
+            string[] cityKinds = { "h_oldstone", "h_villa", "h_shops", "h_apartment", "h_oldstone", "h_villa", "h_tower" };
             for (int k = 0; k < 6; k++)
-                for (int i = 0; i < 9 - k; i++)
+            {
+                float top = 8 + k * 7, width = 220 - k * 30; int n = 10 - k;
+                for (int i = 0; i < n; i++)
                 {
-                    float x = -100 + k * 14 + i * (200 - k * 28) / (8 - k) + R(-4, 4), y = 12 + k * 6, z = -28 - k * 7 + R(-3, 3);
-                    var g = Spawn("Buildings/" + cityKinds[rng.Next(cityKinds.Length)], R(8, 12), 'y', hill); if (!g) continue;
-                    g.transform.localPosition = new Vector3(x, y, z); g.transform.localRotation = Quaternion.Euler(0, 180 + R(-10, 10), 0);
+                    float x = -width / 2 + (i + 0.5f) * width / n + R(-3, 3);
+                    var g = Spawn("Buildings/" + cityKinds[rng.Next(cityKinds.Length)], R(9, 14), 'y', hill); if (!g) continue;
+                    g.transform.localPosition = new Vector3(x, top, -k * 14 + R(-2, 2)); g.transform.localRotation = Quaternion.Euler(0, R(-12, 12), 0);
                 }
+            }
             // citadel on the crest: curtain walls with towers, a mosque and minarets
-            var cit = new Builder(); float cy = 48;
-            cit.Box(stone, new Vector3(0, cy + 7, -40), new Vector3(110, 14, 3)); cit.Box(stone, new Vector3(-55, cy + 7, -20), new Vector3(3, 14, 40)); cit.Box(stone, new Vector3(55, cy + 7, -20), new Vector3(3, 14, 40));
-            for (int i = 0; i < 6; i++) cit.Box(stone, new Vector3(-55 + i * 22, cy + 9, -40), new Vector3(8, 18, 8));
-            for (int i = 0; i < 28; i++) cit.Box(stone, new Vector3(-54 + i * 4, cy + 14.6f, -40), new Vector3(1.8f, 1.2f, 3.2f), false);   // crenellations
-            cit.Box(stone, new Vector3(-14, cy + 12, -28), new Vector3(30, 20, 16)); cit.Box(stone, new Vector3(18, cy + 10, -26), new Vector3(22, 16, 14));
-            cit.Build("Citadel", hill, hill.position, 0, ref mid);
-            var mosque = Spawn("Buildings/h_mosque", 22, 'y', hill); if (mosque) { mosque.transform.localPosition = new Vector3(40, cy, -30); mosque.transform.localRotation = Quaternion.Euler(0, 180, 0); }
+            var cit = new Builder(); float cy = 43; var cz = -82f;
+            cit.Box(stone, new Vector3(0, cy / 2, cz + 6), new Vector3(120, cy, 30)); cit.Box(stone, new Vector3(0, cy + 7, cz - 2), new Vector3(110, 14, 3)); cit.Box(stone, new Vector3(-55, cy + 7, cz + 8), new Vector3(3, 14, 20)); cit.Box(stone, new Vector3(55, cy + 7, cz + 8), new Vector3(3, 14, 20));
+            for (int i = 0; i < 6; i++) cit.Box(stone, new Vector3(-55 + i * 22, cy + 9, cz - 2), new Vector3(8, 18, 8));
+            for (int i = 0; i < 28; i++) cit.Box(stone, new Vector3(-54 + i * 4, cy + 14.6f, cz - 2), new Vector3(1.8f, 1.2f, 3.2f), false);   // crenellations
+            cit.Box(stone, new Vector3(-14, cy + 12, cz + 10), new Vector3(30, 20, 16)); cit.Box(stone, new Vector3(18, cy + 10, cz + 12), new Vector3(22, 16, 14));
+            cit.Build("Citadel", hill, hill.position, hill.eulerAngles.y, ref mid);
+            var mosque = Spawn("Buildings/h_mosque", 22, 'y', hill); if (mosque) { mosque.transform.localPosition = new Vector3(40, cy, cz + 12); mosque.transform.localRotation = Quaternion.identity; }
             foreach (var x in new[] { -34f, 8f })
             {
-                Prim(PrimitiveType.Cylinder, hill, new Vector3(x, cy + 18, -32), new Vector3(2.2f, 18, 2.2f), stone);
-                Prim(PrimitiveType.Cylinder, hill, new Vector3(x, cy + 30, -32), new Vector3(3.2f, 0.4f, 3.2f), stone);
-                Prim(PrimitiveType.Cylinder, hill, new Vector3(x, cy + 35, -32), new Vector3(1.6f, 5, 1.6f), stone);
-                Prim(PrimitiveType.Sphere, hill, new Vector3(x, cy + 40.6f, -32), new Vector3(2.2f, 3.2f, 2.2f), stone);
+                Prim(PrimitiveType.Cylinder, hill, new Vector3(x, cy + 18, cz + 4), new Vector3(2.2f, 18, 2.2f), stone);
+                Prim(PrimitiveType.Cylinder, hill, new Vector3(x, cy + 30, cz + 4), new Vector3(3.2f, 0.4f, 3.2f), stone);
+                Prim(PrimitiveType.Cylinder, hill, new Vector3(x, cy + 35, cz + 4), new Vector3(1.6f, 5, 1.6f), stone);
+                Prim(PrimitiveType.Sphere, hill, new Vector3(x, cy + 40.6f, cz + 4), new Vector3(2.2f, 3.2f, 2.2f), stone);
             }
             return root;
         }

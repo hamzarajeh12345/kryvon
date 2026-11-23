@@ -17,6 +17,8 @@ MonoBehaviour:
   arabicName: "\u0627\u0644\u0642\u0646\u0651\u0627\u0635"
   weaponClass: 3
   ammoType: 5
+  model: w_ar
+  modelLength: 0.95
   damage: 78
   headshotMultiplier: 2.5
   limbMultiplier: 0.9
@@ -50,7 +52,7 @@ MonoBehaviour:
   proneRecoilMultiplier: 0.65
   recoilRecovery: 0.85
   recoilResetSeconds: 0.35
-  defaultScope: 5
+  defaultScope: 0
   allowedScopes: 00000000010000000300000004000000050000000600000007000000i
   moveSpeedMultiplier: 0.95
   viewPrefab: {fileID: 0}

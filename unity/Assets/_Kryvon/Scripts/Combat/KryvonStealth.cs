@@ -24,6 +24,7 @@ namespace Kryvon
         public float CloakCooldown { get; private set; }
         public bool Indoors { get; private set; }
         public float RollProgress { get; private set; }      // mud roll 0..1 while rolling
+        bool tMud, tCloak; public void TouchMud() => tMud = true; public void TouchCloak() => tCloak = true;
 
         Health hp; PlayerController body; PlayerInputReader input; AudioSource hum;
         Renderer[] rends; Material[][] originals; readonly List<GameObject> strands = new();
@@ -106,7 +107,8 @@ namespace Kryvon
             bool driving = body && !body.enabled;
 
             // mud roll
-            if (kb != null && kb.hKey.wasPressedThisFrame && rollT < 0 && !driving && body && body.IsGrounded) { rollT = 0; if (mudSound) AudioSource.PlayClipAtPoint(mudSound, transform.position, 0.7f); }
+            bool mudKey = (kb != null && kb.hKey.wasPressedThisFrame) || tMud; bool cloakKey = (kb != null && kb.xKey.wasPressedThisFrame) || tCloak; tMud = tCloak = false;
+            if (mudKey && rollT < 0 && !driving && body && body.IsGrounded) { rollT = 0; if (mudSound) AudioSource.PlayClipAtPoint(mudSound, transform.position, 0.7f); }
             if (rollT >= 0)
             {
                 rollT += dt; RollProgress = rollT / 3f;
@@ -118,7 +120,7 @@ namespace Kryvon
 
             // shadow cloak
             if (CloakCooldown > 0) CloakCooldown -= dt;
-            if (kb != null && kb.xKey.wasPressedThisFrame && CloakLeft <= 0 && CloakCooldown <= 0 && cloakCharges > 0 && !driving) Cloak(true);
+            if (cloakKey && CloakLeft <= 0 && CloakCooldown <= 0 && cloakCharges > 0 && !driving) Cloak(true);
             if (CloakLeft > 0)
             {
                 CloakLeft -= dt;

@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_malik300
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: malik300
-  displayName: Al-Malik .300
-  arabicName: Al-Malik .300
+  displayName: AWM .300
+  arabicName: AWM .300
   weaponClass: 3
   ammoType: 5
+  model: w_bigsniper
+  modelLength: 1.25
   damage: 105
   headshotMultiplier: 2.5
   limbMultiplier: 0.9

@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_saif19
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: saif19
-  displayName: Saif-19
-  arabicName: Saif-19
+  displayName: Glock 19
+  arabicName: Glock 19
   weaponClass: 6
   ammoType: 2
+  model: w_pistol
+  modelLength: 0.2
   damage: 30
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

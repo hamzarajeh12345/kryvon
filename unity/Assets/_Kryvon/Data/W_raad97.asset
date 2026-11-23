@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_raad97
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: raad97
-  displayName: Ra'd 97
-  arabicName: Ra'd 97
+  displayName: M1897
+  arabicName: M1897
   weaponClass: 4
   ammoType: 4
+  model: w_shotgun
+  modelLength: 1
   damage: 26
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

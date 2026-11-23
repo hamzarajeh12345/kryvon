@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_zalzal45
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: zalzal45
-  displayName: Zalzal-45
-  arabicName: Zalzal-45
+  displayName: UMP45
+  arabicName: UMP45
   weaponClass: 1
   ammoType: 3
+  model: w_smg
+  modelLength: 0.68
   damage: 41
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

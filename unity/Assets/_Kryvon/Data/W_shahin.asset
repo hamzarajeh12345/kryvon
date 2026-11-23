@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_shahin
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: shahin
-  displayName: Shahin
-  arabicName: Shahin
+  displayName: HK416
+  arabicName: HK416
   weaponClass: 0
   ammoType: 0
+  model: w_bullpup
+  modelLength: 0.8
   damage: 42
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

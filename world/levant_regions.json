@@ -1,0 +1,230 @@
+{
+ "width": 2560.0,
+ "length": 1396.3636363636363,
+ "hmax": 280.0,
+ "sea": 8.0,
+ "res": 1025,
+ "regions": [
+  {
+   "name": "Beirut Coastal",
+   "arabic": "بيروت الساحلية",
+   "x": -1070.9,
+   "z": 507.3,
+   "radius": 150,
+   "tier": 3,
+   "kind": "coast_city"
+  },
+  {
+   "name": "Beirut Port",
+   "arabic": "ميناء بيروت",
+   "x": -652.7,
+   "z": 452.7,
+   "radius": 190,
+   "tier": 3,
+   "kind": "port"
+  },
+  {
+   "name": "Heliopolis",
+   "arabic": "هيليوبوليس",
+   "x": -734.5,
+   "z": 252.7,
+   "radius": 110,
+   "tier": 3,
+   "kind": "ruins"
+  },
+  {
+   "name": "Aleppo Citadel",
+   "arabic": "قلعة حلب",
+   "x": 120.0,
+   "z": 585.5,
+   "radius": 140,
+   "tier": 4,
+   "kind": "citadel_city"
+  },
+  {
+   "name": "Damascus Quarter",
+   "arabic": "حارة دمشق",
+   "x": -43.6,
+   "z": 261.8,
+   "radius": 110,
+   "tier": 4,
+   "kind": "old_city"
+  },
+  {
+   "name": "Old Damascus",
+   "arabic": "دمشق القديمة",
+   "x": -43.6,
+   "z": 130.9,
+   "radius": 170,
+   "tier": 4,
+   "kind": "big_city"
+  },
+  {
+   "name": "Tal Al-Rumman",
+   "arabic": "تل الرمان",
+   "x": -316.4,
+   "z": 170.9,
+   "radius": 100,
+   "tier": 2,
+   "kind": "hills_ruins"
+  },
+  {
+   "name": "Old Jerusalem",
+   "arabic": "القدس القديمة",
+   "x": -1007.3,
+   "z": -141.8,
+   "radius": 150,
+   "tier": 3,
+   "kind": "old_city"
+  },
+  {
+   "name": "Joash & Alloun",
+   "arabic": "جوش وعلون",
+   "x": -734.5,
+   "z": -120.0,
+   "radius": 100,
+   "tier": 2,
+   "kind": "village_hills"
+  },
+  {
+   "name": "Olive Plains",
+   "arabic": "سهول الزيتون",
+   "x": -452.7,
+   "z": -101.8,
+   "radius": 150,
+   "tier": 1,
+   "kind": "olives"
+  },
+  {
+   "name": "The Outskirts",
+   "arabic": "الأطراف",
+   "x": -534.5,
+   "z": -261.8,
+   "radius": 130,
+   "tier": 2,
+   "kind": "village"
+  },
+  {
+   "name": "Kharbet Saba",
+   "arabic": "خربة سابا",
+   "x": -552.7,
+   "z": -465.5,
+   "radius": 100,
+   "tier": 2,
+   "kind": "village"
+  },
+  {
+   "name": "Wadi Araba",
+   "arabic": "وادي عربة",
+   "x": -425.5,
+   "z": -574.5,
+   "radius": 180,
+   "tier": 1,
+   "kind": "desert_valley"
+  },
+  {
+   "name": "Dead Sea",
+   "arabic": "البحر الميت",
+   "x": -934.5,
+   "z": -465.5,
+   "radius": 120,
+   "tier": 1,
+   "kind": "dead_sea"
+  },
+  {
+   "name": "Waiting Area",
+   "arabic": "ساحة الانتظار",
+   "x": 20.0,
+   "z": -638.2,
+   "radius": 120,
+   "tier": 0,
+   "kind": "base"
+  },
+  {
+   "name": "Al Salt",
+   "arabic": "السلط",
+   "x": 465.5,
+   "z": 80.0,
+   "radius": 130,
+   "tier": 3,
+   "kind": "hill_town"
+  },
+  {
+   "name": "Amman Downtown",
+   "arabic": "وسط عمان",
+   "x": 756.4,
+   "z": 234.5,
+   "radius": 170,
+   "tier": 4,
+   "kind": "big_city"
+  },
+  {
+   "name": "Al-Orak",
+   "arabic": "عمان الشرقية",
+   "x": 1065.5,
+   "z": 80.0,
+   "radius": 130,
+   "tier": 3,
+   "kind": "industrial"
+  },
+  {
+   "name": "Wadi Musa",
+   "arabic": "وادي موسى",
+   "x": 538.2,
+   "z": -192.7,
+   "radius": 150,
+   "tier": 3,
+   "kind": "canyon_mountain"
+  },
+  {
+   "name": "Petra",
+   "arabic": "البتراء",
+   "x": 647.3,
+   "z": -465.5,
+   "radius": 140,
+   "tier": 4,
+   "kind": "petra"
+  },
+  {
+   "name": "Badia Desert",
+   "arabic": "بادية الشام",
+   "x": 992.7,
+   "z": -356.4,
+   "radius": 220,
+   "tier": 1,
+   "kind": "desert"
+  },
+  {
+   "name": "Cedar Hills",
+   "arabic": "جبال الأرز",
+   "x": 683.6,
+   "z": 552.7,
+   "radius": 200,
+   "tier": 2,
+   "kind": "mountain_forest"
+   },
+   {
+    "name": "QAIA",
+    "arabic": "مطار الملكة علياء",
+    "x": 765.7,
+    "z": -265.6,
+    "radius": 230,
+    "tier": 4,
+    "kind": "airport"
+  }
+ ],
+ "gates": {
+  "B1": [
+   -316.4,
+   -134.5
+  ],
+  "B2": [
+   247.3,
+   -210.9
+  ],
+  "B3": [
+   165.5,
+   -365.5
+  ]
+ }
+}

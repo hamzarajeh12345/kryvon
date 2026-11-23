@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_burj16
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: burj16
-  displayName: Burj-16
-  arabicName: Burj-16
+  displayName: M16A4
+  arabicName: M16A4
   weaponClass: 0
   ammoType: 0
+  model: w_ar
+  modelLength: 1
   damage: 43
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_raads12
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: raads12
-  displayName: Ra'd S12
-  arabicName: Ra'd S12
+  displayName: Saiga-12
+  arabicName: Saiga-12
   weaponClass: 4
   ammoType: 4
+  model: w_autoshot
+  modelLength: 0.98
   damage: 22
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

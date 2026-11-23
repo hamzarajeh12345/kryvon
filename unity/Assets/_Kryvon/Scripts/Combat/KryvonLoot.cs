@@ -1,10 +1,11 @@
 // Ground loot: weapons, ammo, medkits, vests, helmets. Press F (Interact) near an item to take it.
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Kryvon
 {
-    public enum LootKind { Weapon, Ammo, Medkit, Bandage, Vest, Helmet, Backpack, Drink, Syringe, Grenade, Scope, FlareGun, FirstAid, Painkiller, Molotov, SmokeGrenade, Flashbang, SpikeStrip, Shield, Ghillie, CloakDevice }
+    public enum LootKind { Weapon, Ammo, Medkit, Bandage, Vest, Helmet, Backpack, Drink, Syringe, Grenade, Scope, FlareGun, FirstAid, Painkiller, Molotov, SmokeGrenade, Flashbang, SpikeStrip, Shield, Ghillie, CloakDevice, NightVision }
 
     public class KryvonLoot : MonoBehaviour
     {
@@ -19,6 +20,23 @@ namespace Kryvon
         public static readonly string[] RarityNames = { "COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY" };
 
         public static readonly List<KryvonLoot> All = new();
+        /// the weapon the last pick-up replaced (the picker drops it on the ground)
+        public static WeaponData Dropped;
+        static readonly Dictionary<WeaponData, KryvonLoot> templates = new();
+        /// keep a hidden copy of every weapon item picked up, so a replaced weapon can be put back on the ground
+        public static void Keep(KryvonLoot l) { if (l.weapon && !templates.ContainsKey(l.weapon)) { var c = Instantiate(l.gameObject); c.SetActive(false); DontDestroyOnLoad(c); templates[l.weapon] = c.GetComponent<KryvonLoot>(); } }
+        public static void DropWeapon(WeaponData d, Vector3 at)
+        {
+            if (!d) return;
+            KryvonLoot src = templates.TryGetValue(d, out var t) && t ? t : All.Find(x => x && x.weapon == d);
+            if (!src) { Debug.LogWarning("KRYVON: no model to drop " + d.displayName); return; }
+            var g = Instantiate(src.gameObject, at, Quaternion.Euler(0, Random.Range(0, 360f), 0)); SceneManager.MoveGameObjectToScene(g, SceneManager.GetActiveScene()); g.SetActive(true);
+        }
+        void Start()
+        {
+            if (kind == LootKind.Ammo) KryvonAmmoLook.Dress(this);      // rounds of its calibre, not a crate
+            if (kind == LootKind.Weapon) foreach (var t in GetComponentsInChildren<Transform>(true)) if (t.name.StartsWith("Scope")) t.gameObject.SetActive(false);   // guns lie on the ground bare
+        }     // rounds of its calibre, not a crate
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 
@@ -43,6 +61,7 @@ namespace Kryvon
             LootKind.Shield => "Deployable Shield  (U to plant)",
             LootKind.Ghillie => "LEVANT GHILLIE SUIT",
             LootKind.CloakDevice => "SHADOW CLOAK  (X, 3 charges)",
+            LootKind.NightVision => "NIGHT VISION GOGGLES  (N)",
             LootKind.FlareGun => "FLARE GUN  (G = call a supply drop)",
             LootKind.Scope => $"{(level >= 3 ? "8x" : level == 2 ? "4x" : "2x")} Scope",
             _ => label,
@@ -60,8 +79,9 @@ namespace Kryvon
             {
                 case LootKind.Weapon:
                     if (!w || !weapon) return false;
-                    int slot = w.CurrentSlot.data == null ? w.CurrentIndex : (w.CurrentIndex == 0 ? 1 : 0);
-                    w.Give(slot, weapon, weapon.magazineSize); w.AddAmmo(weapon.ammoType, weapon.magazineSize * 2); return true;
+                    var old = w.Take(weapon, weapon.magazineSize);
+                    if (weapon.weaponClass != WeaponClass.Melee) w.AddAmmo(weapon.ammoType, weapon.magazineSize * 2);
+                    Dropped = old; return true;
                 case LootKind.Ammo: if (!w) return false; w.AddAmmo(ammoType, amount); return true;
                 case LootKind.Medkit: gear.Add(Consumable.MedKit); return true;
                 case LootKind.FirstAid: gear.Add(Consumable.FirstAid); return true;
@@ -81,6 +101,7 @@ namespace Kryvon
                 case LootKind.Ghillie: { var st = player.GetComponent<KryvonStealth>(); if (!st || st.HasGhillie) return false; st.EquipGhillie(); return true; }
                 case LootKind.CloakDevice: { var st = player.GetComponent<KryvonStealth>(); if (!st) return false; st.cloakCharges += 3; return true; }
                 case LootKind.FlareGun: gear.flares++; return true;
+                case LootKind.NightVision: if (player.GetComponent<KryvonNightVision>()) return false; KryvonNightVision.Give(player); return true;
                 case LootKind.Scope: return w && w.AttachScope(level >= 3 ? ScopeType.X8 : level == 2 ? ScopeType.X4 : ScopeType.X2);
             }
             return false;

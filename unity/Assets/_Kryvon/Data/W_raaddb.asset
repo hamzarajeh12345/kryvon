@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_raaddb
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: raaddb
-  displayName: Ra'd DB
-  arabicName: Ra'd DB
+  displayName: Double Barrel
+  arabicName: Double Barrel
   weaponClass: 4
   ammoType: 4
+  model: w_dbshot
+  modelLength: 0.8
   damage: 26
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

@@ -137,8 +137,25 @@ namespace Kryvon.EditorTools
         public static void Build()
         {
             if (A("gun_ar") == null) KryvonAudioGen.GenerateAll();
-            KryvonShowcase.Build();                                   // street, lights, sky, post-fx, squad, camera
-            KryvonWorld.Dress();                                      // terrain, grass, trees, barriers, wrecks, hangars
+            // the match is played on the Levant map when its data exists (tools/make_levant.py), else on the old street map
+            bool levant = File.Exists(Path.Combine(Application.dataPath, "..", "..", "world", "levant_regions.json"));
+            KryvonDropBuild.Levant = levant;
+            if (levant)
+            {
+                KryvonLevant.Build();                                 // terrain, sea, roads, sky, sun, post, camera
+                KryvonWorld.DressLevant(GameObject.Find("Terrain").GetComponent<Terrain>());
+                var (lw, ll, _) = KryvonLevant.Size(); KryvonDropBuild.MapHalf = new Vector2(lw / 2, ll / 2);
+                KryvonMinimapBake.Bake(lw / 2, ll / 2);
+                System.IO.File.WriteAllLines("Assets/_Kryvon/Resources/UI/map_labels.txt", System.Linq.Enumerable.Select(KryvonLevant.Regions(), r => $"{r.name};{r.x:0};{r.z:0};{r.kind}"));
+                AssetDatabase.ImportAsset("Assets/_Kryvon/Resources/UI/map_labels.txt");
+                var wa = KryvonLevant.RegionPos("Waiting Area"); var ter = GameObject.Find("Terrain").GetComponent<Terrain>();
+                KryvonDropBuild.BaseOrigin = new Vector3(wa.x, ter.SampleHeight(new Vector3(wa.x, 0, wa.y)) + ter.transform.position.y + 0.3f, wa.y);
+            }
+            else
+            {
+                KryvonShowcase.Build();                               // street, lights, sky, post-fx, squad, camera
+                KryvonWorld.Dress();                                  // terrain, grass, trees, barriers, wrecks, hangars
+            }
             var scene = EditorSceneManager.GetActiveScene();
 
             foreach (var g in new[] { "Buildings", "Vehicles" })
@@ -155,10 +172,10 @@ namespace Kryvon.EditorTools
             }
 
             // ---------- sounds on the weapons ----------
-            var rifle = Weapon("AlSaqr", w => { w.weaponId = "saqr"; w.displayName = "Al-Saqr"; w.arabicName = "الصقر"; w.weaponClass = WeaponClass.AssaultRifle; w.ammoType = AmmoType.A556; });
+            var rifle = Weapon("AlSaqr", w => { w.weaponId = "saqr"; w.displayName = "M4A1"; w.arabicName = "M4A1"; w.weaponClass = WeaponClass.AssaultRifle; w.ammoType = AmmoType.A556; });
             var sniper = Weapon("AlQannas", w =>
             {
-                w.weaponId = "qannas"; w.displayName = "Al-Qannas"; w.arabicName = "القنّاص"; w.weaponClass = WeaponClass.Sniper; w.ammoType = AmmoType.A300;
+                w.weaponId = "qannas"; w.displayName = "L96A1"; w.arabicName = "L96A1"; w.weaponClass = WeaponClass.Sniper; w.ammoType = AmmoType.A300;
                 w.damage = 78; w.headshotMultiplier = 2.5f; w.roundsPerMinute = 48; w.magazineSize = 5; w.reloadSeconds = 3.2f; w.fireModes = new[] { FireMode.Single }; w.range = 750; w.defaultScope = ScopeType.X4;
             });
             rifle.shotSound = A("gun_ar"); rifle.suppressedShotSound = A("gun_suppressed"); rifle.reloadSound = A("reload"); rifle.drySound = A("ui_dry_fire");
@@ -194,12 +211,15 @@ namespace Kryvon.EditorTools
                 var model = (GameObject)PrefabUtility.InstantiatePrefab(asset, player.transform); model.name = hero;
                 FitHeight(model, 1.8f);
                 var hav = humanCtrl != null ? KryvonHumanoid.BuildAvatar(hero) : null;
-                bool bakedGun = hero == "hamza";                       // generated holding his rifle
+                bool bakedGun = false;                                 // every hero now has empty hands; the gun is attached
                 if (hav != null)
                 {
                     var an = model.GetComponentInChildren<Animator>() ?? model.AddComponent<Animator>();
                     an.avatar = hav; an.runtimeAnimatorController = humanCtrl; an.applyRootMotion = false; an.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
                     if (!bakedGun) KryvonHumanoid.AttachGunAimed(model, an, "w_ar", 0.95f);
+                    // every other gun model in the hand too, hidden: the held gun takes the shape of the weapon picked up
+                    foreach (var grp in KryvonWorld.Arsenal.Where(x => x.model != "w_ar").GroupBy(x => x.model))
+                    { var pv = KryvonHumanoid.AttachGunAimed(model, an, grp.Key, grp.Max(x => x.len)); if (pv) pv.SetActive(false); }
                 }
                 else { Animate(model, BuildController(hero)); if (!bakedGun) AttachGun(model, "w_ar", 0.95f); }
                 heroRoots.Add(model);
@@ -212,10 +232,29 @@ namespace Kryvon.EditorTools
             new GameObject("KillFeed").AddComponent<KryvonKillFeed>();
             var gearC = player.AddComponent<KryvonGear>(); player.AddComponent<KryvonLootLabels>();
             KryvonWorld.SetupTactical(player, A);
+            player.AddComponent<KryvonLanding>();
+            KryvonDropBuild.Setup(player, A, AssetDatabase.LoadAssetAtPath<Font>($"{Root}/ThirdParty/Fonts/Rajdhani-SemiBold.ttf"));   // waiting area → jet → parachute
+            KryvonBotsBuild.Setup(A("gun_ar"), AssetDatabase.LoadAssetAtPath<Font>($"{Root}/ThirdParty/Fonts/Rajdhani-SemiBold.ttf"), null);   // AI opponents + match end
+            // landing points for the regions of the single map (lobby strip order)
+            void SpawnAt(int i, Vector3 p, float yaw) { var s = new GameObject("Spawn_" + i); s.transform.SetPositionAndRotation(p, Quaternion.Euler(0, yaw, 0)); }
+            if (levant)
+            {   // lobby map card order: Damascus, Petra, Heliopolis, Amman, The Outskirts
+                var ter = GameObject.Find("Terrain").GetComponent<Terrain>(); int si = 0;
+                foreach (var rn in new[] { "Old Damascus", "Petra", "Heliopolis", "Amman Downtown", "The Outskirts", "Beirut Port", "Old Jerusalem", "Aleppo Citadel", "Al Salt", "Cedar Hills" })
+                { var rp = KryvonLevant.RegionPos(rn); SpawnAt(si++, new Vector3(rp.x, ter.SampleHeight(new Vector3(rp.x, 0, rp.y)) + 2f, rp.y), 0); }
+            }
+            else {
+            SpawnAt(0, spawn, 0);
+            var pet = GameObject.Find("Petra"); if (pet) SpawnAt(1, pet.transform.TransformPoint(new Vector3(0, 0.3f, -32)), pet.transform.eulerAngles.y);
+            var jer = GameObject.Find("Jerash"); if (jer) SpawnAt(2, jer.transform.TransformPoint(new Vector3(0, 0.3f, -45)), 0);
+            var t1 = KryvonWorld.Towns[1]; SpawnAt(3, new Vector3(t1.x - 3, 20, t1.y - 3), 45);
+            SpawnAt(4, new Vector3(160, 20, 130), 220);
+            }
+            var touchC = player.AddComponent<KryvonTouchControls>(); Set(touchC, "font", AssetDatabase.LoadAssetAtPath<Font>($"{Root}/ThirdParty/Fonts/Rajdhani-SemiBold.ttf"));
             Set(gearC, "useSound", AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactSoft_heavy_000.ogg"));
             Set(gearC, "doneSound", AssetDatabase.LoadAssetAtPath<AudioClip>($"{Root}/ThirdParty/Kenney/impactGeneric_light_000.ogg"));
             var hudC = player.AddComponent<KryvonHUD>(); Set(hudC, "font", AssetDatabase.LoadAssetAtPath<Font>($"{Root}/ThirdParty/Fonts/Rajdhani-SemiBold.ttf"));
-            BuildZone();
+            BuildZone(levant);
             var drop = player.AddComponent<KryvonAirdrop>();
             Set(drop, "crateTemplate", KryvonWorld.MakeAirdropTemplate(GameObject.Find("Outskirts")?.transform));
             Set(drop, "flareSound", A("gun_pistol")); Set(drop, "planeSound", A("vehicle_engine"));
@@ -273,6 +312,7 @@ namespace Kryvon.EditorTools
             var hud = new GameObject("HUD").AddComponent<KryvonDebugHUD>();
             Set(hud, "player", player.GetComponent<Health>()); Set(hud, "weapons", weapons); Set(hud, "body", body); Set(hud, "cameraRig", rig);
 
+            AddCulling();
             var path = Root + "/Scenes/Play.unity";
             EditorSceneManager.SaveScene(scene, path);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(path, true), new EditorBuildSettingsScene(Root + "/Scenes/Test.unity", true) };
@@ -324,7 +364,7 @@ namespace Kryvon.EditorTools
         }
 
         // Al-Tawq with the match timings: 120 s landing (circle shows at 60 s), then five phases, ~24 min in all.
-        static void BuildZone()
+        static void BuildZone(bool levant)
         {
             var go = new GameObject("Al-Tawq");
             var zone = go.AddComponent<SafeZone>();
@@ -340,6 +380,7 @@ namespace Kryvon.EditorTools
             so.FindProperty("wallVisual").objectReferenceValue = wall.transform; so.FindProperty("wallHeight").floatValue = 300f;
             var ph = so.FindProperty("phases"); ph.arraySize = 5;
             float[,] p = { { 240, 180, 330, 1 }, { 180, 120, 190, 3 }, { 120, 90, 100, 6 }, { 90, 60, 50, 10 }, { 30, 45, 1, 22 } };   // wait, shrink, radius, % HP per second
+            if (levant) { so.FindProperty("startRadius").floatValue = 1350f; p = new float[,] { { 240, 200, 620, 1 }, { 180, 150, 360, 3 }, { 120, 100, 180, 6 }, { 90, 70, 80, 10 }, { 30, 45, 1, 22 } }; }
             for (int i = 0; i < 5; i++)
             {
                 var e = ph.GetArrayElementAtIndex(i);
@@ -347,6 +388,32 @@ namespace Kryvon.EditorTools
                 e.FindPropertyRelative("radius").floatValue = p[i, 2]; e.FindPropertyRelative("damagePerSecond").floatValue = p[i, 3];
             }
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        public static void AddCulling()
+        {
+            int n = 0;
+            void Cull(Transform t, float height)
+            {
+                var rs = t.GetComponentsInChildren<Renderer>(true); if (rs.Length == 0 || t.GetComponent<LODGroup>()) return;
+                var g = t.gameObject.AddComponent<LODGroup>();
+                g.SetLODs(new[] { new LOD(height, rs) }); g.RecalculateBounds(); n++;
+            }
+            foreach (var name in new[] { "Outskirts", "Buildings", "Vehicles", "Squad" })
+            {
+                var root = GameObject.Find(name); if (!root) continue;
+                foreach (Transform c in root.transform)
+                {
+                    if (c.name == "Houses" || c.name == "Towns" || c.name == "Loot" || c.name == "TownLoot" || c.name == "Grass" || c.name == "AreaVehicles")
+                    {
+                        float h = c.name == "Grass" ? 0.08f : c.name.Contains("Loot") ? 0.02f : c.name == "AreaVehicles" ? 0.012f : 0.006f;
+                        foreach (Transform k in c) { if (c.name == "Towns") foreach (Transform b in k) Cull(b, 0.006f); else Cull(k, h); }
+                    }
+                    else if (c.name == "Terrain" || c.name == "Petra" || c.name == "Jerash") continue;
+                    else Cull(c, c.name.StartsWith("p_") || c.name.StartsWith("Props") ? 0.012f : 0.008f);
+                }
+            }
+            Debug.Log($"KRYVON: distance culling on {n} objects");
         }
 
         public static void BuildAndCapture()

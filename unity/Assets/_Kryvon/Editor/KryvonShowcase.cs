@@ -69,6 +69,25 @@ namespace Kryvon.EditorTools
             AssetDatabase.SaveAssets();
         }
 
+        /// a second renderer without SSAO, at index 1 of the pipeline asset (used by the low graphics levels)
+        public static void EnsureLiteRenderer()
+        {
+            var assetPath = Root + "/Settings/KRYVON_URP.asset";
+            var asset = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(assetPath); if (asset == null) { SetupURP(); asset = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(assetPath); }
+            var litePath = Root + "/Settings/KRYVON_Renderer_Lite.asset";
+            var lite = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(litePath);
+            if (lite == null) { lite = ScriptableObject.CreateInstance<UniversalRendererData>(); AssetDatabase.CreateAsset(lite, litePath); }
+            foreach (var path in new[] { assetPath, Root + "/Settings/KRYVON_URP_Mobile.asset" })
+            {
+                var a = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(path); if (a == null) continue;
+                var so = new SerializedObject(a); var list = so.FindProperty("m_RendererDataList");
+                if (list.arraySize < 2) list.arraySize = 2;
+                list.GetArrayElementAtIndex(1).objectReferenceValue = lite;
+                so.ApplyModifiedPropertiesWithoutUndo(); EditorUtility.SetDirty(a);
+            }
+            AssetDatabase.SaveAssets();
+        }
+
         static void SetFloat(SerializedObject o, string p, float v) { var s = o.FindProperty(p); if (s != null) s.floatValue = v; }
         static void SetInt(SerializedObject o, string p, int v) { var s = o.FindProperty(p); if (s != null) s.intValue = v; }
         static void SetBool(SerializedObject o, string p, bool v) { var s = o.FindProperty(p); if (s != null) s.boolValue = v; }
@@ -303,6 +322,7 @@ namespace Kryvon.EditorTools
 
         public static void Capture(string file, int w = 1920, int h = 1080)
         {
+            if (Application.isBatchMode) return;   // GPU readback can lose the device in batch builds
             var cam = Camera.main; if (cam == null) { Debug.LogError("KRYVON: no camera"); return; }
             var rt = new RenderTexture(w, h, 24, RenderTextureFormat.ARGB32); rt.antiAliasing = 4;
             cam.targetTexture = rt;

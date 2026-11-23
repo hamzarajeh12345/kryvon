@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_nimr47
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: nimr47
-  displayName: Nimr-47
-  arabicName: Nimr-47
+  displayName: AK-47
+  arabicName: AK-47
   weaponClass: 0
   ammoType: 1
+  model: w_ak
+  modelLength: 0.88
   damage: 48
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

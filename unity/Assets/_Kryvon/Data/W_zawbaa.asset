@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_zawbaa
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: zawbaa
-  displayName: Zawba'a
-  arabicName: Zawba'a
+  displayName: AK-12
+  arabicName: AK-12
   weaponClass: 0
   ammoType: 1
+  model: w_bullpup2
+  modelLength: 0.75
   damage: 49
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

@@ -149,6 +149,8 @@ code{background:#0006;padding:1px 5px;border-radius:4px}
 #bars{background:var(--glass);border-radius:6px;padding:4px}
 .bar{height:8px;background:#0006;border-radius:4px;overflow:hidden}.bar+.bar{margin-top:3px;height:4px}
 #hpfill{height:100%;width:100%;background:#e8e8e8;transition:width .15s}#boostfill{height:100%;width:0;background:#ffb02e}
+#staminafill{height:100%;width:100%;background:#69d9ff;transition:width .12s}
+#bars .bar.stamina{height:4px;margin-top:3px}
 #armor,#items{display:flex;gap:10px;justify-content:center;font-size:12px;margin-top:5px;flex-wrap:wrap}
 #items i{font-style:normal;padding:0 3px;border-radius:4px}#items i.sel{background:#ffc53155;outline:1px solid var(--gold)}
 #items .thr{display:flex;gap:2px}
@@ -278,6 +280,12 @@ body.knocked #dmgflash{opacity:.35!important}
 .teamtbl{flex-basis:100%;max-width:420px;margin:4px auto 0;border-collapse:collapse;font-size:13px;direction:rtl}
 .teamtbl th{color:var(--dim);font-weight:600;padding:4px 8px;text-align:right}.teamtbl td{padding:4px 8px;border-top:1px solid #ffffff14;text-align:right}.teamtbl tr.me td{color:var(--gold)}
 
+/* ---------- master pass & tactical glass UI ---------- */
+.pass-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}.pass-head>span{white-space:nowrap}.pass-bar{flex:1;height:10px;border-radius:8px;background:#0008;overflow:hidden}.pass-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),#fff2a0)}
+.pass-ranks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.pass-ranks span{padding:8px;border:1px solid var(--line);border-radius:9px;color:var(--dim);background:#0003}.pass-ranks span.on{color:#fff;border-color:#ffc53188;background:linear-gradient(135deg,#ffc53122,#ffffff08)}
+.pass-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.pass-reward{position:relative;min-height:118px;display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line);border-radius:12px;background:radial-gradient(circle at 80% 20%,#ffc53118,transparent 45%),var(--panel2);filter:saturate(.35);opacity:.65}.pass-reward.unlocked{filter:none;opacity:1;border-color:#ffc53188}.pass-level{position:absolute;left:8px;top:8px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#0007;color:var(--gold);font-weight:900}.pass-reward b{font-size:14px}.pass-reward small,.pass-reward i{color:var(--dim);font-style:normal;font-size:11px}
+.tb{backdrop-filter:blur(8px);background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(5,5,5,.48));border-color:rgba(255,255,255,.38)!important;box-shadow:inset 0 1px rgba(255,255,255,.22),0 5px 16px #0005}
+
 /* ---------- lobby extras ---------- */
 .modes{display:flex;gap:6px;background:#0005;border:1px solid var(--line);border-radius:12px;padding:4px;width:max-content;max-width:100%}
 .modes button{border:0;background:none;color:var(--dim);font-weight:800;padding:8px 18px;border-radius:9px}.modes button.on{background:var(--gold2);color:#1a1206}
@@ -352,7 +360,7 @@ body.knocked #dmgflash{opacity:.35!important}
   <div id="sarabox"><div class="av">S</div><div id="sara-msg"></div></div>
   <div id="bottom">
     <div id="weps"><div id="w0"></div><div id="w1"></div></div>
-    <div id="bars"><div class="bar"><div id="hpfill"></div></div><div class="bar"><div id="boostfill"></div></div></div>
+    <div id="bars"><div class="bar"><div id="hpfill"></div></div><div class="bar"><div id="boostfill"></div></div><div class="bar stamina"><div id="staminafill"></div></div></div>
     <div id="armor"></div><div id="items"></div>
   </div>
 </div>

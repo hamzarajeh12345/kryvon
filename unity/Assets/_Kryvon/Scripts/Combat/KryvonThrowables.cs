@@ -16,7 +16,8 @@ namespace Kryvon
         public int[] counts = new int[5];
         public int spikes, shields;
         public Throwable Selected { get; private set; }
-        public float Cook { get; private set; } = -1;      // seconds since the pin was pulled, -1 = not holding
+        public float Cook { get; private set; } = -1;
+        float lastThrowTap = -9;      // seconds since the pin was pulled, -1 = not holding
         public static readonly string[] Names = { "Frag", "Molotov", "Smoke", "Flashbang", "Flare Gun" };
 
         [SerializeField] GameObject[] templates = new GameObject[5];      // disabled model per throwable
@@ -27,10 +28,18 @@ namespace Kryvon
         void Awake()
         {
             gear = GetComponent<KryvonGear>(); drop = GetComponent<KryvonAirdrop>(); self = GetComponent<Health>();
+            // battle royale: everyone lands with nothing – throwables and deployables only come from loot
+            for (int i = 0; i < counts.Length; i++) counts[i] = 0; spikes = 0; shields = 0;
             var g = new GameObject("ThrowArc"); g.transform.SetParent(transform, false);
             arc = g.AddComponent<LineRenderer>(); arc.positionCount = 30; arc.widthMultiplier = 0.04f; arc.enabled = false;
-            arc.material = new Material(Shader.Find("Universal Render Pipeline/Unlit")); arc.material.SetColor("_BaseColor", new Color(1f, 0.85f, 0.4f));
+            arc.material = new Material(Resources.Load<Material>("KryvonUnlit")); arc.material.SetColor("_BaseColor", new Color(1f, 0.85f, 0.4f));
         }
+        // touch hooks
+        bool tCycle, tDown, tUp, tSpike, tShield;
+        public void TouchCycle() => tCycle = true; public void TouchThrowDown() => tDown = true; public void TouchThrowUp() => tUp = true;
+        public void TouchSpike() => tSpike = true; public void TouchShield() => tShield = true;
+        static bool Consume(ref bool f) { bool v = f; f = false; return v; }
+        public void Select(Throwable t) { if (Count(t) > 0 && Cook < 0) Selected = t; }
         public int Count(Throwable t) => t == Throwable.Flare ? (gear ? gear.flares : 0) : counts[(int)t];
         void Spend(Throwable t) { if (t == Throwable.Flare) gear.flares--; else counts[(int)t]--; }
 
@@ -44,13 +53,23 @@ namespace Kryvon
 
         void Update()
         {
-            var kb = Keyboard.current; if (kb == null || (self && !self.IsAlive)) return;
+            var kb = Keyboard.current; if (self && !self.IsAlive) return;
+            bool cycle = (kb != null && kb.tKey.wasPressedThisFrame) || Consume(ref tCycle), gDown = (kb != null && kb.gKey.wasPressedThisFrame) || Consume(ref tDown), gUp = (kb != null && kb.gKey.wasReleasedThisFrame) || Consume(ref tUp);
+            bool ySp = (kb != null && kb.yKey.wasPressedThisFrame) || Consume(ref tSpike), uSh = (kb != null && kb.uKey.wasPressedThisFrame) || Consume(ref tShield);
             var body = GetComponent<PlayerController>(); if (body && !body.enabled) { arc.enabled = false; Cook = -1; return; }   // driving
-            if (kb.tKey.wasPressedThisFrame) for (int i = 1; i <= 5; i++) { var n = (Throwable)(((int)Selected + i) % 5); if (Count(n) > 0 || i == 5) { Selected = n; break; } }
-            if (kb.yKey.wasPressedThisFrame && spikes > 0) { spikes--; Deploy(spikeTemplate, 3.2f, true); }
-            if (kb.uKey.wasPressedThisFrame && shields > 0) { shields--; Deploy(shieldTemplate, 1.8f, false); }
+            if (Cook < 0 && Count(Selected) <= 0) for (int i = 1; i < 5; i++) { var n = (Throwable)(((int)Selected + i) % 5); if (Count(n) > 0) { Selected = n; break; } }   // ran out: hold the next one you have
+            if (cycle) for (int i = 1; i <= 5; i++) { var n = (Throwable)(((int)Selected + i) % 5); if (Count(n) > 0 || i == 5) { Selected = n; break; } }
+            if (ySp && spikes > 0) { spikes--; Deploy(spikeTemplate, 3.2f, true); }
+            if (uSh && shields > 0) { shields--; Deploy(shieldTemplate, 1.8f, false); }
 
-            if (kb.gKey.wasPressedThisFrame && Count(Selected) > 0)
+            // emergency smoke: two quick presses of throw while badly hurt = a smoke at your own feet, no cooking
+            if (gDown && self && self.Current < self.Max * 0.3f && Time.time - lastThrowTap < 0.35f && Count(Throwable.Smoke) > 0)
+            {
+                Cook = -1; arc.enabled = false; counts[(int)Throwable.Smoke]--; StartCoroutine(Smoke(transform.position + transform.forward * 0.6f));
+                KryvonKillFeed.Notice("EMERGENCY SMOKE"); lastThrowTap = -9; return;
+            }
+            if (gDown) lastThrowTap = Time.time;
+            if (gDown && Count(Selected) > 0)
             {
                 if (Selected == Throwable.Flare) { Spend(Throwable.Flare); drop?.Call(transform.position + transform.forward * 25f); return; }
                 Cook = 0; Play(pinSound);
@@ -60,7 +79,7 @@ namespace Kryvon
                 Cook += Time.deltaTime;
                 DrawArc();
                 if (Selected == Throwable.Frag && Cook >= 5f) { Spend(Selected); Cook = -1; arc.enabled = false; StartCoroutine(Frag(Origin, 0f)); return; }   // held too long
-                if (kb.gKey.wasReleasedThisFrame) { Spend(Selected); Throw(Selected, Cook); Cook = -1; arc.enabled = false; }
+                if (gUp) { Spend(Selected); Throw(Selected, Cook); Cook = -1; arc.enabled = false; }
             }
         }
 
@@ -102,7 +121,7 @@ namespace Kryvon
         IEnumerator Frag(Vector3 at, float delay)
         {
             if (delay > 0) yield return new WaitForSeconds(delay);
-            KryvonFX.Fire(at); if (boomSound) AudioSource.PlayClipAtPoint(boomSound, at, 1f);
+            KryvonFX.Explosion(at, 1.1f); if (boomSound) AudioSource.PlayClipAtPoint(boomSound, at, 1f);
             CameraShake.Kick(Mathf.Clamp01(1.2f - Vector3.Distance(at, transform.position) / 25f));
             foreach (var h in FindObjectsByType<Health>())
             {
@@ -114,6 +133,7 @@ namespace Kryvon
             }
             foreach (var v in KryvonVehicle.All) { float d = Vector3.Distance(at, v.transform.position); if (d < 6f) v.TakeDamage(new DamageInfo { Amount = Mathf.Lerp(900, 200, d / 6f), Source = gameObject, Cause = "Frag Grenade" }); }
             foreach (var w in FindObjectsByType<KryvonWindow>()) if (Vector3.Distance(at, w.transform.position) < 5f) w.TakeDamage(new DamageInfo { Amount = 10 });
+            foreach (var dr in KryvonDoor.All.ToArray()) if (dr && Vector3.Distance(at, dr.transform.position) < 5f) dr.TakeDamage(new DamageInfo { Amount = 400 });
         }
 
         IEnumerator Molotov(Vector3 at)
@@ -121,16 +141,15 @@ namespace Kryvon
             if (glassSound) AudioSource.PlayClipAtPoint(glassSound, at, 1f);
             AudioSource loop = null;
             if (fireLoop) { var g = new GameObject("Fire"); g.transform.position = at; loop = g.AddComponent<AudioSource>(); loop.clip = fireLoop; loop.loop = true; loop.spatialBlend = 1; loop.Play(); }
-            var light = new GameObject("FireLight").AddComponent<Light>(); light.transform.position = at + Vector3.up; light.type = LightType.Point; light.color = new Color(1f, 0.5f, 0.15f); light.range = 9;
+            // real burning ground: flame tongues, embers, black smoke and a flickering light, dying down at the end
+            var fire = KryvonFX.GroundFire(at + Vector3.up * 0.05f, 2.4f, 8f);
             for (float t = 0; t < 8f; t += 0.25f)
             {
-                for (int i = 0; i < 4; i++) KryvonFX.Flame(at + new Vector3(Random.Range(-2.6f, 2.6f), 0.1f, Random.Range(-2.6f, 2.6f)));
-                light.intensity = 3f + Random.value * 2f;
                 foreach (var h in FindObjectsByType<Health>())
                     if (h.IsAlive && (h.transform.position - at).sqrMagnitude < 9f) h.TakeDamage(new DamageInfo { Amount = 2.5f, Source = gameObject, Cause = "Molotov", IgnoreArmor = true });
                 yield return new WaitForSeconds(0.25f);
             }
-            Destroy(light.gameObject); if (loop) Destroy(loop.gameObject);
+            if (loop) Destroy(loop.gameObject, 4f);
         }
 
         public static readonly List<(Vector3 p, float until)> Smokes = new();
@@ -138,13 +157,13 @@ namespace Kryvon
         {
             if (hissSound) AudioSource.PlayClipAtPoint(hissSound, at, 0.9f);
             Smokes.Add((at, Time.time + 25f));
-            for (float t = 0; t < 25f; t += 0.2f) { KryvonFX.SmokeCloud(at, t < 3f ? t / 3f : 1f); yield return new WaitForSeconds(0.2f); }
+            KryvonFX.SmokeScreen(at, 25f); yield break;
         }
 
         void Flash(Vector3 at)
         {
             if (bangSound) AudioSource.PlayClipAtPoint(bangSound, at, 1f);
-            var l = new GameObject("Flash").AddComponent<Light>(); l.transform.position = at + Vector3.up * 0.3f; l.type = LightType.Point; l.range = 25; l.intensity = 40; Destroy(l.gameObject, 0.12f);
+            KryvonFX.Flash(at);
             // the player is blinded if close and the bang is in view (or very close behind)
             var cam = Camera.main; if (!cam) return;
             var to = at - cam.transform.position; float d = to.magnitude; if (d > 16f) return;

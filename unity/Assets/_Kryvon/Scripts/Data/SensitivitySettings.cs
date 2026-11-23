@@ -23,7 +23,7 @@ namespace Kryvon
         /// <summary>Optical zoom of each sight (None = iron sights, a slight zoom).</summary>
         public static float Zoom(ScopeType s) => s switch
         {
-            ScopeType.None => 1.25f, ScopeType.RedDot => 1.35f, ScopeType.Holo => 1.35f,
+            ScopeType.None => 1.1f, ScopeType.RedDot => 1.2f, ScopeType.Holo => 1.2f,
             ScopeType.X2 => 2f, ScopeType.X3 => 3f, ScopeType.X4 => 4f, ScopeType.X6 => 6f, ScopeType.X8 => 8f, _ => 1f,
         };
         public static string Arabic(ScopeType s) => s switch

@@ -116,6 +116,7 @@ export class World {
     this.roadMesh = buildRoadMesh(this);
     this.buildRocks(rng);
     this.buildTrees(rng, preset);
+    this.buildTallGrass(rng, preset);
     this.buildBoxMesh();
     this.buildCylMesh();
     this.buildGrid();
@@ -706,6 +707,37 @@ export class World {
     this.treeCount = cedars.length + olives.length;
   }
 
+  buildTallGrass(rng, preset) {
+    const count = Math.round(2400 * preset.trees);
+    const list = [];
+    for (let i = 0; i < count * 8 && list.length < count; i++) {
+      const x = (rng() * 2 - 1) * (HALF - 20), z = (rng() * 2 - 1) * (HALF - 20);
+      if (this.isWater(x, z) || this.nearZone(x, z, 0.55)) continue;
+      const h = this.getHeight(x, z);
+      if (h < 5 || h > 75) continue;
+      const northGreen = x / S < -120 && z / S < 350;
+      const olivePlain = z / S > 250 && z / S < 760;
+      if (!northGreen && !olivePlain && rng() < 0.82) continue;
+      list.push({ x, z, y: h, s: 0.65 + rng() * 1.25, rot: rng() * Math.PI * 2 });
+    }
+    if (!list.length) return;
+    const blades = new THREE.ConeGeometry(0.35, 1.8, 3, 1);
+    blades.translate(0, 0.9, 0);
+    this.tallGrass = new THREE.InstancedMesh(blades, new THREE.MeshLambertMaterial({ color: 0x52683b, side: THREE.DoubleSide, transparent: true, alphaTest: 0.35 }), list.length);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3(), c = new THREE.Color();
+    list.forEach((g, i) => {
+      q.setFromEuler(new THREE.Euler(0, g.rot, (rng() - 0.5) * 0.12));
+      m.compose(p.set(g.x, g.y, g.z), q, s.set(g.s, g.s * (0.8 + rng() * 0.8), g.s));
+      this.tallGrass.setMatrixAt(i, m);
+      c.setHSL(0.24 + rng() * 0.04, 0.38, 0.28 + rng() * 0.12);
+      this.tallGrass.setColorAt(i, c);
+    });
+    this.tallGrass.receiveShadow = true;
+    this.tallGrass.castShadow = false;
+    this.tallGrass.frustumCulled = false;
+    this.scene.add(this.tallGrass);
+  }
+
   buildBoxMesh() {
     const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, map: DETAIL }), this.boxes.length);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color(), p = new THREE.Vector3(), s = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
@@ -730,6 +762,11 @@ export class World {
     });
     mesh.castShadow = true; mesh.receiveShadow = true;
     this.scene.add(mesh);
+  }
+
+  updateTallGrass(time) {
+    if (!this.tallGrass) return;
+    this.tallGrass.rotation.z = Math.sin(time * 0.55) * 0.012;
   }
 
   landmarkNear(x, z, r) {

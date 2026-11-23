@@ -12,9 +12,10 @@ namespace Kryvon.EditorTools
 {
     class KryvonUALImport : AssetPostprocessor
     {
+        static bool Ours(string p) => p.Contains("ThirdParty/Quaternius") || p.Contains("ThirdParty/Mixamo") || p.Contains("ThirdParty/Hyper3DAnims");
         void OnPreprocessModel()
         {
-            if (!assetPath.Contains("ThirdParty/Quaternius")) return;
+            if (!Ours(assetPath)) return;
             var mi = (ModelImporter)assetImporter;
             mi.animationType = ModelImporterAnimationType.Human;
             mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
@@ -22,12 +23,12 @@ namespace Kryvon.EditorTools
         }
         void OnPreprocessAnimation()
         {
-            if (!assetPath.Contains("ThirdParty/Quaternius")) return;
+            if (!Ours(assetPath)) return;
             var mi = (ModelImporter)assetImporter;
             var clips = mi.defaultClipAnimations;
             foreach (var c in clips)
             {
-                bool loop = c.name.Contains("Loop") || c.name.EndsWith("Idle");
+                bool loop = c.name.Contains("Loop") || c.name.EndsWith("Idle") || assetPath.Contains("ThirdParty/Mixamo") || assetPath.Contains("ThirdParty/Hyper3DAnims");   // dances and the crawl loop
                 c.loopTime = loop; c.loopPose = loop;
                 c.lockRootRotation = true; c.lockRootHeightY = true; c.lockRootPositionXZ = true;   // in place
                 c.keepOriginalOrientation = false; c.keepOriginalPositionY = true; c.keepOriginalPositionXZ = false;
@@ -40,6 +41,7 @@ namespace Kryvon.EditorTools
     {
         const string Root = "Assets/_Kryvon";
         const string UAL = Root + "/ThirdParty/Quaternius/UAL1_Standard.fbx";
+        const string UAL2 = Root + "/ThirdParty/Quaternius/UAL2_Standard.fbx";
 
         static readonly (string human, string bone)[] Map =
         {
@@ -52,9 +54,21 @@ namespace Kryvon.EditorTools
 
         public static bool Available => AssetDatabase.LoadAssetAtPath<GameObject>(UAL) != null;
 
-        public static Dictionary<string, AnimationClip> Clips() =>
-            AssetDatabase.LoadAllAssetsAtPath(UAL).OfType<AnimationClip>().Where(c => !c.name.StartsWith("__preview__"))
+        public static Dictionary<string, AnimationClip> Clips()
+        {
+            var d = AssetDatabase.LoadAllAssetsAtPath(UAL).Concat(AssetDatabase.LoadAllAssetsAtPath(UAL2)).OfType<AnimationClip>().Where(c => !c.name.StartsWith("__preview__"))
                 .GroupBy(c => c.name.Contains("|") ? c.name.Substring(c.name.LastIndexOf('|') + 1) : c.name).ToDictionary(g => g.Key, g => g.First());
+            // single-clip FBX files (Hyper3D moves converted with Blender, Mixamo dances): the clip is named after the file,
+            // because inside the file it is just called "Scene"
+            foreach (var dir in new[] { Root + "/ThirdParty/Hyper3DAnims", Root + "/ThirdParty/Mixamo" })
+                if (System.IO.Directory.Exists(dir))
+                    foreach (var f in System.IO.Directory.GetFiles(dir, "*.fbx"))
+                    {
+                        var c = AssetDatabase.LoadAllAssetsAtPath(f.Replace(System.IO.Path.DirectorySeparatorChar, '/')).OfType<AnimationClip>().FirstOrDefault(x => !x.name.StartsWith("__preview__"));
+                        if (c) d[System.IO.Path.GetFileNameWithoutExtension(f)] = c;
+                    }
+            return d;
+        }
 
         /// builds (or loads) a humanoid avatar for a Hyper3D character glb, from a clean unscaled instance
         public static Avatar BuildAvatar(string ch)
@@ -111,7 +125,8 @@ namespace Kryvon.EditorTools
             AssetDatabase.DeleteAsset(path);
             var m = new AvatarMask();
             for (int i = 0; i < (int)AvatarMaskBodyPart.LastBodyPart; i++) m.SetHumanoidBodyPartActive((AvatarMaskBodyPart)i, false);
-            foreach (var p in new[] { AvatarMaskBodyPart.Body, AvatarMaskBodyPart.Head, AvatarMaskBodyPart.LeftArm, AvatarMaskBodyPart.RightArm, AvatarMaskBodyPart.LeftFingers, AvatarMaskBodyPart.RightFingers })
+            // arms only: the pistol pose must not twist the chest/head sideways (that made the hero walk crooked)
+            foreach (var p in new[] { AvatarMaskBodyPart.LeftArm, AvatarMaskBodyPart.RightArm, AvatarMaskBodyPart.LeftFingers, AvatarMaskBodyPart.RightFingers })
                 m.SetHumanoidBodyPartActive(p, true);
             AssetDatabase.CreateAsset(m, path);
             return m;
@@ -126,7 +141,7 @@ namespace Kryvon.EditorTools
             var ctrl = AnimatorController.CreateAnimatorControllerAtPath(path);
             foreach (var (n, t) in new[] { ("Speed", AnimatorControllerParameterType.Float), ("Stance", AnimatorControllerParameterType.Int), ("Dead", AnimatorControllerParameterType.Bool),
                 ("Knocked", AnimatorControllerParameterType.Bool), ("Aiming", AnimatorControllerParameterType.Bool), ("Sprinting", AnimatorControllerParameterType.Bool),
-                ("Jump", AnimatorControllerParameterType.Trigger), ("Fire", AnimatorControllerParameterType.Trigger), ("Reload", AnimatorControllerParameterType.Trigger), ("Driving", AnimatorControllerParameterType.Bool) })
+                ("Jump", AnimatorControllerParameterType.Trigger), ("Climb", AnimatorControllerParameterType.Trigger), ("Fire", AnimatorControllerParameterType.Trigger), ("Reload", AnimatorControllerParameterType.Trigger), ("Driving", AnimatorControllerParameterType.Bool) })
                 ctrl.AddParameter(n, t);
             ctrl.AddParameter(new AnimatorControllerParameter { name = "Grounded", type = AnimatorControllerParameterType.Bool, defaultBool = true });
 
@@ -141,14 +156,31 @@ namespace Kryvon.EditorTools
             }
             var loco = Tree("Locomotion", (C("Idle_Loop"), 0f), (C("Walk_Loop"), 1.9f), (C("Jog_Fwd_Loop"), 4.8f), (C("Sprint_Loop"), 6.4f));
             var crouch = Tree("Crouch", (C("Crouch_Idle_Loop"), 0f), (C("Crouch_Fwd_Loop"), 2.4f));
+            // lying down: a real low crawl (Hyper3D preset, converted with Blender); holding still = the crawl pose frozen
+            var crawl = C("HumanSpLowCrawl");
+            AnimatorState prone; UnityEditor.Animations.BlendTree proneTree = null;
+            if (crawl) prone = ctrl.CreateBlendTreeInController("Prone", out proneTree, 0);
+            else prone = Tree("Prone", (C("Swim_Idle_Loop"), 0f), (C("Swim_Fwd_Loop"), 1.1f));
+            if (crawl && proneTree != null)
+            {
+                proneTree.blendParameter = "Speed"; proneTree.useAutomaticThresholds = false;
+                proneTree.AddChild(crawl, 0f); proneTree.AddChild(crawl, 0.35f);   // moving at all = the full crawl
+                var kids = proneTree.children; kids[0].timeScale = 0.0001f; proneTree.children = kids;
+            }
+            var climb = sm.AddState("Climb"); climb.motion = C("ClimbUp_1m");
             var air = sm.AddState("Air"); air.motion = C("Jump_Loop");
             var land = sm.AddState("Land"); land.motion = C("Jump_Land");
             var dead = sm.AddState("Dead"); dead.motion = C("Death01");
             var drive = sm.AddState("Drive"); drive.motion = C("Driving_Loop");
             sm.defaultState = loco;
             AnimatorStateTransition T(AnimatorState a, AnimatorState b, float d = 0.18f) { var t = a.AddTransition(b); t.hasExitTime = false; t.duration = d; return t; }
-            T(loco, crouch, 0.25f).AddCondition(AnimatorConditionMode.NotEqual, 0, "Stance");
+            T(loco, crouch, 0.25f).AddCondition(AnimatorConditionMode.Equals, 1, "Stance");
             T(crouch, loco, 0.25f).AddCondition(AnimatorConditionMode.Equals, 0, "Stance");
+            foreach (var st in new[] { loco, crouch }) T(st, prone, 0.35f).AddCondition(AnimatorConditionMode.Equals, 2, "Stance");
+            T(prone, loco, 0.35f).AddCondition(AnimatorConditionMode.Equals, 0, "Stance");
+            T(prone, crouch, 0.35f).AddCondition(AnimatorConditionMode.Equals, 1, "Stance");
+            foreach (var st in new[] { loco, crouch }) T(st, climb, 0.08f).AddCondition(AnimatorConditionMode.If, 0, "Climb");
+            var cb = climb.AddTransition(loco); cb.hasExitTime = true; cb.exitTime = 0.85f; cb.duration = 0.15f;
             foreach (var st in new[] { loco, crouch }) T(st, air, 0.1f).AddCondition(AnimatorConditionMode.If, 0, "Jump");
             T(air, land, 0.08f).AddCondition(AnimatorConditionMode.If, 0, "Grounded");
             var back = land.AddTransition(loco); back.hasExitTime = true; back.exitTime = 0.6f; back.duration = 0.15f;
@@ -175,6 +207,34 @@ namespace Kryvon.EditorTools
             ctrl.layers = layers;
             AssetDatabase.SaveAssets();
             return ctrl;
+        }
+
+        /// lobby: stand, ready, and the dances from the emote panel (int "Emote": 0 idle, 1 ready, 2.. dances)
+        public static readonly string[] Emotes = { "Idle_Loop", "Pistol_Idle_Loop", "Dance_SambaDancing", "Dance_HipHopDancing", "Dance_Breakdance1990", "Dance_FemaleDancePose" };
+        public static RuntimeAnimatorController BuildLobbyController()
+        {
+            var c = Clips(); var path = $"{Root}/Animations/LobbyHero.controller";
+            AssetDatabase.DeleteAsset(path);
+            var ctrl = AnimatorController.CreateAnimatorControllerAtPath(path);
+            ctrl.AddParameter("Emote", AnimatorControllerParameterType.Int);
+            var sm = ctrl.layers[0].stateMachine;
+            AnimatorState first = null;
+            for (int i = 0; i < Emotes.Length; i++)
+            {
+                if (!c.TryGetValue(Emotes[i], out var clip)) { Debug.LogWarning("KRYVON: lobby emote missing " + Emotes[i]); continue; }
+                var st = sm.AddState(Emotes[i]); st.motion = clip; if (first == null) { first = st; sm.defaultState = st; }
+                var t = sm.AddAnyStateTransition(st); t.AddCondition(AnimatorConditionMode.Equals, i, "Emote"); t.duration = 0.3f; t.canTransitionToSelf = false; t.hasExitTime = false;
+            }
+            // arms: hold the rifle at the ready (the idle alone let it hang from one hand, pointing at the floor).
+            // The lobby turns this layer off for the dances (KryvonLobby.SetEmote).
+            if (c.TryGetValue("Pistol_Idle_Loop", out var hold))
+            {
+                ctrl.AddLayer(new AnimatorControllerLayer { name = "Arms", defaultWeight = 1f, avatarMask = UpperMask(), stateMachine = new AnimatorStateMachine { name = "Arms", hideFlags = HideFlags.HideInHierarchy } });
+                var layers = ctrl.layers; var up = layers[1].stateMachine; AssetDatabase.AddObjectToAsset(up, ctrl);
+                var h = up.AddState("Hold"); h.motion = hold; up.defaultState = h;
+                ctrl.layers = layers;
+            }
+            AssetDatabase.SaveAssets(); return ctrl;
         }
 
         /// pose an Animator with a clip at time t in edit mode (works for humanoid clips, unlike AnimationClip.SampleAnimation)

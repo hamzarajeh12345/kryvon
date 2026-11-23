@@ -2,8 +2,8 @@
 // static files) it falls back to an offline profile kept in this browser only.
 import { rewards, itemById, DEFAULT_LOADOUT } from './progression.js';
 const TOKEN_KEY = 'kryvon.token', OFFLINE_KEY = 'kryvon.offline';
-export const RANKS = ['Recruit', 'Soldier', 'Nashmi', 'Faris', 'Batal', 'Commander', 'KRYVON Legend'];
-export const RANKS_AR = ['مستجد', 'جندي', 'نشمي', 'فارس', 'بطل', 'قائد', 'أسطورة كرايفون'];
+export const RANKS = ['Recruit', 'Soldier', 'Nashmi', 'Faris', 'Batal', 'Commander', 'Sham Crown', 'KRYVON Legend'];
+export const RANKS_AR = ['مستجد', 'جندي', 'نشمي', 'فارس', 'بطل', 'قائد', 'تاج الشام', 'أسطورة كرايفون'];
 export const rankOf = xp => Math.min(RANKS.length - 1, Math.floor(xp / 1000));
 
 const ls = {

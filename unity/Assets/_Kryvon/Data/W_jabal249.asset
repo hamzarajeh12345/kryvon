@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_jabal249
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: jabal249
-  displayName: Jabal-249
-  arabicName: Jabal-249
+  displayName: M249
+  arabicName: M249
   weaponClass: 5
   ammoType: 0
+  model: w_lmg
+  modelLength: 1.05
   damage: 45
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

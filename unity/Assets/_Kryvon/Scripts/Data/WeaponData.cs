@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Kryvon
 {
-    public enum WeaponClass { AssaultRifle, SMG, DMR, Sniper, Shotgun, LMG, Pistol }
+    public enum WeaponClass { AssaultRifle, SMG, DMR, Sniper, Shotgun, LMG, Pistol, Melee }
     public enum AmmoType { A556, A762, A9mm, A45, Gauge12, A300 }
     public enum FireMode { Single, Burst, Auto }
 
@@ -18,6 +18,8 @@ namespace Kryvon
         public string arabicName = "الصقر";
         public WeaponClass weaponClass = WeaponClass.AssaultRifle;
         public AmmoType ammoType = AmmoType.A556;
+        public string model = "w_ar";          // Models/Weapons/<model>.glb – the held gun takes this shape
+        public float modelLength = 0.95f;
 
         [Header("Damage")]
         public float damage = 40f;

@@ -115,6 +115,8 @@ class Game {
     this.actors.push(this.player);
     this.total = map.players;
     this.seenLandmarks = new Set();
+    this.rivalKills = new Map();
+    this.rivalDeaths = new Map();
     this.teams = {}; this.pings = []; this.chatLog = [];
     if (map.training) { this.player.team = 0; this.teams[0] = [this.player]; this.setupTraining(); }
     else {
@@ -375,6 +377,7 @@ class Game {
     const W = {
       clear:     { top: 0x3f86d8, bot: 0xcfe3f2, fog: 0xc6dcee, sun: 0xfff1d6, si: 2.6, hemi: 1.1, near: 120, far: 1, elev: 0.9 },
       sunset:    { top: 0x2c3a78, bot: 0xffa060, fog: 0xe8a77a, sun: 0xffa060, si: 2.0, hemi: 0.8, near: 100, far: 0.9, elev: 0.18 },
+      night:     { top: 0x07142e, bot: 0x17294a, fog: 0x10203b, sun: 0xaac8ff, si: 0.45, hemi: 0.45, near: 18, far: 0.32, elev: 0.8 },
       fog:       { top: 0x9aa3ab, bot: 0xc4c8cb, fog: 0xbfc3c6, sun: 0xffffff, si: 1.2, hemi: 1.2, near: 8, far: 0.22, elev: 0.8 },
       rain:      { top: 0x4c5560, bot: 0x8a949e, fog: 0x7f8a94, sun: 0xc8d0d8, si: 0.9, hemi: 1.0, near: 30, far: 0.45, elev: 0.8 },
       snow:      { top: 0x9fb2c6, bot: 0xe6edf3, fog: 0xdfe6ee, sun: 0xffffff, si: 1.6, hemi: 1.2, near: 30, far: 0.45, elev: 0.7 },
@@ -415,7 +418,7 @@ class Game {
       g2.addColorStop(0, 'rgba(255,255,255,0.85)'); g2.addColorStop(1, 'rgba(255,255,255,0)'); cg.fillStyle = g2; cg.fillRect(0, 0, 256, 128);
     }
     const cloudTex = new THREE.CanvasTexture(cc);
-    const cloudy = { clear: 26, sunset: 22, fog: 10, rain: 40, snow: 36, khamaseen: 8 }[this.weather.id] || 20;
+    const cloudy = { clear: 26, sunset: 22, night: 18, fog: 10, rain: 40, snow: 36, khamaseen: 8 }[this.weather.id] || 20;
     this.clouds = [];
     for (let i = 0; i < cloudy; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, fog: false, depthWrite: false, transparent: true, opacity: 0.55 + Math.random() * 0.35, color: this.weather.id === 'rain' ? 0x8a929a : 0xffffff }));
@@ -487,6 +490,11 @@ class Game {
 
   update(dt) {
     this.time += dt;
+    if (this.world) this.world.updateTallGrass(this.time);
+    if (this.killcam) {
+      this.killcam.t -= dt;
+      if (this.killcam.t <= 0) this.killcam = null;
+    }
     const inp = this.input;
     if (inp.hit('KeyM') || inp.hit('Tab')) this.toggleMap();
     if (this.phase === 'island') {
@@ -755,6 +763,7 @@ class Game {
     if (d0 < radius * 4) this.shake = Math.max(this.shake, 0.6 * (1 - d0 / (radius * 4)));
     for (const a of this.actors) {
       if (!a.alive || (a.state !== 'ground' && a.state !== 'vehicle')) continue;
+      if (attacker && a === attacker) continue; // no self-damage or self-explosion
       if (attacker && a !== attacker && a.team === attacker.team && this.teamSize > 1) continue;
       const d = Math.hypot(a.pos.x - x, a.pos.y + 1 - y, a.pos.z - z);
       if (d > radius) continue;
@@ -899,6 +908,23 @@ class Game {
   }
 
   // ---------- events ----------
+  onArmorBreak(v, slot, lvl, attacker) {
+    if (v === this.player) {
+      this.toast(slot === 'head' ? 'انكسر الخوذة!' : 'انكسر الدرع!');
+      this.audio.armorBreak(slot);
+    }
+  }
+  onWound(v, part, attacker, cause) {
+    if (v === this.player) {
+      if (part === 'leg') this.toast('إصابة بالرجل · الحركة تباطأت');
+      else if (v.bleeding > 0) this.toast('نزيف · استخدم علاجاً');
+    }
+  }
+  onFootstep(actor, surface) {
+    if (!actor.isPlayer) return;
+    const near = this.listener();
+    this.audio.footstep(surface, Math.hypot(actor.pos.x - near.x, actor.pos.z - near.z), 0);
+  }
   onDamage(v, dmg, part, attacker, cause) {
     if (attacker === this.player && v !== this.player) {
       this.audio.hit(part === 'head');
@@ -924,6 +950,15 @@ class Game {
       if (v.armored) { v.helmet = { lvl: 2, dur: ARMOR.helmet.dur[2] }; v.vest = { lvl: 2, dur: ARMOR.vest.dur[2] }; v.refreshLook(); }
       return;
     }
+    if (attacker && attacker !== v) {
+      const key = attacker.id + ':' + v.id;
+      this.rivalKills.set(key, (this.rivalKills.get(key) || 0) + 1);
+      this.rivalDeaths.set(v.id + ':' + attacker.id, (this.rivalDeaths.get(v.id + ':' + attacker.id) || 0) + 1);
+      if ((this.rivalKills.get(key) || 0) >= 2) {
+        this.hud.killfeed(`<b>⚔ الخصم اللدود</b> <span class="wpn">${attacker.name} × ${v.name}</span>`);
+        if (attacker === this.player) this.toast('الخصم اللدود · مكافأة ثأر إضافية');
+      }
+    }
     if (v.vehicle) { v.vehicle.seats[v.seat] = null; v.vehicle = null; if (v === this.player) this.audio.stopEngine(); }
     v.alive = false; v.state = 'dead'; v.mesh.visible = false; v.knocked = false; v.action = null;
     this.aliveCount--;
@@ -941,7 +976,11 @@ class Game {
       : `<b>${me(v.name)}</b> <span class="wpn">${cause === 'Al-Tawq' ? 'was caught by Al-Tawq' : cause === 'Red Zone' ? 'was hit by the Red Zone' : 'died'}</span>`);
     if (killer === this.player && v !== this.player) { this.audio.kill(); this.toast(`Eliminated <b>${v.name}</b>${headshot ? ' · Headshot' : ''}`); const hm = $('hitmark'); hm.className = 'show kill'; }
     for (const a of this.actors) if (a.ai && a.ai.target === v) a.ai.target = null;
-    if (v === this.player) { this.deathBy = { killer, cause }; if (this.teamUp(0)) { this.spectating = true; this.sara('متت – بتتفرّج على فريقك هلّق. إذا فاز الفريق، بتفوز معه!', 6); } }
+    if (v === this.player) {
+      this.deathBy = { killer, cause };
+      if (killer && killer !== v) this.killcam = { killer, t: 6.5 };
+      if (this.teamUp(0)) { this.spectating = true; this.sara('متت – بتتفرّج على فريقك هلّق. إذا فاز الفريق، بتفوز معه!', 6); }
+    }
     if (teamOut && v.team === 0) this.endMatch(false, this.deathBy && this.deathBy.killer, this.deathBy ? this.deathBy.cause : cause);
     else if (this.teamsLeft === 1 && this.teamUp(0)) this.endMatch(true);
   }
@@ -982,10 +1021,17 @@ class Game {
     let pivot, dist, fov = baseFov, shoulder = 0;
     const f = fwd(this.camYaw, this.camPitch);
     if (p.state === 'plane' && this.plane) { pivot = this.plane.pos.clone(); dist = 45; }
-    else if (!p.alive) { // spectate a living teammate, or the place you fell
+    else if (!p.alive) { // killcam or spectate a living teammate
+      if (this.killcam && this.killcam.killer && this.killcam.killer.alive) {
+        const k = this.killcam.killer;
+        pivot = k.eye();
+        dist = 5.2;
+        this.camYaw += (((k.yaw - this.camYaw) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 2);
+      } else { // spectate a living teammate, or the place you fell
       const m = this.mates(p).find(x => x.alive && x.state === 'ground') || this.mates(p).find(x => x.alive);
       if (m && this.spectating) { pivot = m.eye(); dist = 4; this.camYaw += ((m.yaw - this.camYaw + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 3); }
       else { pivot = p.pos.clone().add(new THREE.Vector3(0, 2, 0)); dist = 14; this.camYaw += dt * 0.15; }
+      }
     }
     else if (p.state === 'vehicle' && p.vehicle) {
       const v = p.vehicle, d = VEHICLES[v.type];

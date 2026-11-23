@@ -24,10 +24,16 @@ namespace Kryvon
         public bool SprintHeld => sprint.IsPressed() || touchSprint;
         public bool WalkHeld => walk.IsPressed();
         public bool FireHeld => fire.IsPressed() || touchFire;
-        public bool FirePressed => fire.WasPressedThisFrame() || (touchFire && !touchFirePrev);
+        public bool FirePressed => fire.WasPressedThisFrame() || Edge(ref fireDown, ref fireDownRead);
+        public bool FireReleased => fire.WasReleasedThisFrame() || Edge(ref fireUp, ref fireUpRead);
         public bool AimHeld => aim.IsPressed() || touchAim;
-        public bool AimPressed => aim.WasPressedThisFrame() || (touchAim && !touchAimPrev);
-        public bool AimReleased => aim.WasReleasedThisFrame() || (!touchAim && touchAimPrev);
+        public bool AimPressed => aim.WasPressedThisFrame() || Edge(ref aimDown, ref aimDownRead);
+        public bool AimReleased => aim.WasReleasedThisFrame() || Edge(ref aimUp, ref aimUpRead);
+        // A touch button can change state at any point in the frame (UI events, coroutines). The edge stays pending until
+        // the first frame something reads it, and is true for that whole frame, so it is never missed and never doubled.
+        bool fireDown, fireUp, aimDown, aimUp; int fireDownRead = -1, fireUpRead = -1, aimDownRead = -1, aimUpRead = -1;
+        static bool Edge(ref bool pending, ref int readAt) { if (!pending) return false; if (readAt < 0) readAt = Time.frameCount; return readAt == Time.frameCount; }
+        static void Settle(ref bool pending, ref int readAt) { if (pending && readAt >= 0 && readAt <= Time.frameCount) { pending = false; readAt = -1; } }
         public bool JumpPressed => jump.WasPressedThisFrame() || Consume(ref touchJump);
         public bool CrouchPressed => crouch.WasPressedThisFrame() || Consume(ref touchCrouch);
         public bool PronePressed => prone.WasPressedThisFrame() || Consume(ref touchProne);
@@ -48,8 +54,8 @@ namespace Kryvon
         float touchLean; Vector2 touchMove, touchLook;
         public void TouchMove(Vector2 v) => touchMove = Vector2.ClampMagnitude(v, 1f);
         public void TouchLook(Vector2 pixels) => touchLook += pixels;
-        public void TouchFire(bool down) => touchFire = down;
-        public void TouchAim(bool down) => touchAim = down;
+        public void TouchFire(bool down) { if (down && !touchFire) { fireDown = true; fireDownRead = -1; } if (!down && touchFire) { fireUp = true; fireUpRead = -1; } touchFire = down; }
+        public void TouchAim(bool down) { if (down && !touchAim) { aimDown = true; aimDownRead = -1; } if (!down && touchAim) { aimUp = true; aimUpRead = -1; } touchAim = down; }
         public void TouchSprint(bool on) => touchSprint = on;
         public void TouchFreeLook(bool on) => touchFreeLook = on;
         public void TouchLean(float v) => touchLean = Mathf.Clamp(v, -1f, 1f);
@@ -58,6 +64,13 @@ namespace Kryvon
         public void TouchProne() => touchProne = true;
         public void TouchReload() => touchReload = true;
         public void TouchInteract() => touchInteract = true;
+        // V = switch TPP/FPP, Z = swap to the next scope you carry
+        bool touchView, touchScope;
+        public void TouchView() => touchView = true;
+        public void TouchScope() => touchScope = true;
+        public bool ViewTogglePressed => (Keyboard.current != null && Keyboard.current.vKey.wasPressedThisFrame) || Consume(ref touchView);
+        public bool ScopeCyclePressed => (Keyboard.current != null && Keyboard.current.zKey.wasPressedThisFrame) || Consume(ref touchScope);
+        int touchSwitch = -1; public void TouchSwitch(int slot) => touchSwitch = slot;
         static bool Consume(ref bool flag) { bool v = flag; flag = false; return v; }
 
         void Awake()
@@ -125,6 +138,9 @@ namespace Kryvon
             touchLook = Vector2.zero;
 
             WeaponSwitch = slot1.WasPressedThisFrame() ? 0 : slot2.WasPressedThisFrame() ? 1 : -1;
+            var kb3 = Keyboard.current;
+            if (WeaponSwitch < 0 && kb3 != null) { if (kb3.digit3Key.wasPressedThisFrame) WeaponSwitch = 2; else if (kb3.digit4Key.wasPressedThisFrame) WeaponSwitch = 3; }
+            if (touchSwitch >= 0) { WeaponSwitch = touchSwitch; touchSwitch = -1; }
             float s = scroll.ReadValue<float>();
             if (WeaponSwitch < 0 && Mathf.Abs(s) > 0.01f) WeaponSwitch = s > 0 ? -10 : 10;
 
@@ -132,6 +148,6 @@ namespace Kryvon
             if (lockCursor && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && Cursor.lockState != CursorLockMode.Locked) SetCursorLocked(true);
         }
 
-        void LateUpdate() { touchFirePrev = touchFire; touchAimPrev = touchAim; }
+        void LateUpdate() { touchFirePrev = touchFire; touchAimPrev = touchAim; Settle(ref fireDown, ref fireDownRead); Settle(ref fireUp, ref fireUpRead); Settle(ref aimDown, ref aimDownRead); Settle(ref aimUp, ref aimUpRead); }
     }
 }

@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_rami14
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: rami14
-  displayName: Rami-14
-  arabicName: Rami-14
+  displayName: M14 EBR
+  arabicName: M14 EBR
   weaponClass: 2
   ammoType: 1
+  model: w_dmr
+  modelLength: 1.1
   damage: 62
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

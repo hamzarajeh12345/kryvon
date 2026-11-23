@@ -132,6 +132,7 @@ export const AIRDROP_INTERVAL = [100, 140]; // GDD says 180–240 s; shortened f
 export const WEATHER = [
   { id: 'clear',     name: 'Clear',      w: 40 },
   { id: 'sunset',    name: 'Sunset',     w: 20 },
+  { id: 'night',     name: 'Night',      w: 10 },
   { id: 'fog',       name: 'Fog',        w: 15 },
   { id: 'rain',      name: 'Rain',       w: 10 },
   { id: 'snow',      name: 'Snow',       w: 10 },

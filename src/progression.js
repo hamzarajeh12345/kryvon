@@ -10,6 +10,17 @@ export const TIERS = [
   { id: 'emerald', ar: 'زمرّد',      en: 'Emerald',    min: 3500, color: '#3fd28a' },
   { id: 'crown',   ar: 'تاج الشام',  en: 'Sham Crown', min: 5000, color: '#c99bff' },
 ];
+
+export const MASTER_PASS_LEVELS = 100;
+export const MASTER_PASS_SKINS = [
+  { level: 1,  ar: 'وشاح البتراء', en: 'Petra Shemagh', slot: 'scarf', item: 'scarf_green' },
+  { level: 2,  ar: 'حزام شامي', en: 'Sham Belt', slot: 'top', item: 'top_desert' },
+  { level: 3,  ar: 'عباءة الليم', en: 'Shadow Abaya', slot: 'top', item: 'top_track' },
+  { level: 4,  ar: 'سلاح نحاسي', en: 'Copper Arsenal', slot: 'gun', item: 'gun_copper' },
+  { level: 5,  ar: 'دبكة النصر', en: 'Victory Dabke', slot: 'dance', item: 'dabke' },
+  { level: 6,  ar: 'تمويه صخري', en: 'Rose-Rock Camo', slot: 'gun', item: 'gun_rose' },
+  { level: 7,  ar: 'عرضة الذهب', en: 'Golden Ardah', slot: 'dance', item: 'ardah' },
+];
 export function tierOf(tp) {
   let i = 0;
   while (i + 1 < TIERS.length && tp >= TIERS[i + 1].min) i++;

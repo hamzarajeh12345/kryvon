@@ -195,6 +195,7 @@ export class HUD {
     $('hpfill').style.width = p.hp + '%';
     $('hpfill').style.background = p.hp > 60 ? '#e8e8e8' : p.hp > 30 ? '#ffb347' : '#ff4d4d';
     $('boostfill').style.width = p.boost + '%';
+    const stamina = $('staminafill'); if (stamina) stamina.style.width = p.stamina + '%';
     $('alive').textContent = g.aliveCount;
     $('teamsleft').parentElement.style.display = g.teamSize > 1 ? '' : 'none';
     $('teamsleft').textContent = g.teamsLeft;

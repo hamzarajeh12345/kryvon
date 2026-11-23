@@ -1,0 +1,22 @@
+Beirut Coastal;-1071;507;coast_city
+Beirut Port;-653;453;port
+Heliopolis;-735;253;ruins
+Aleppo Citadel;120;586;citadel_city
+Damascus Quarter;-44;262;old_city
+Old Damascus;-44;131;big_city
+Tal Al-Rumman;-316;171;hills_ruins
+Old Jerusalem;-1007;-142;old_city
+Joash & Alloun;-735;-120;village_hills
+Olive Plains;-453;-102;olives
+The Outskirts;-535;-262;village
+Kharbet Saba;-553;-466;village
+Wadi Araba;-426;-575;desert_valley
+Dead Sea;-935;-466;dead_sea
+Waiting Area;20;-638;base
+Al Salt;466;80;hill_town
+Amman Downtown;756;235;big_city
+Al-Orak;1066;80;industrial
+Wadi Musa;538;-193;canyon_mountain
+Petra;647;-466;petra
+Badia Desert;993;-356;desert
+Cedar Hills;684;553;mountain_forest

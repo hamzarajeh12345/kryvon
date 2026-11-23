@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_jabal36
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: jabal36
-  displayName: Jabal-36
-  arabicName: Jabal-36
+  displayName: G36C
+  arabicName: G36C
   weaponClass: 0
   ammoType: 0
+  model: w_ar
+  modelLength: 0.85
   damage: 41
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

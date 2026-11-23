@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_saqr4
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: saqr4
-  displayName: Saqr-4
-  arabicName: Saqr-4
+  displayName: M4A1
+  arabicName: M4A1
   weaponClass: 0
   ammoType: 0
+  model: w_ar
+  modelLength: 0.9
   damage: 41
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

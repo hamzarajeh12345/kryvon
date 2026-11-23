@@ -9,6 +9,7 @@ namespace Kryvon
     {
         public float Amount;
         public bool Headshot;
+        public bool Limb;              // legs / arms: less damage, the vest doesn't cover them
         public GameObject Source;     // who caused it (null for the zone)
         public string Cause;          // weapon name, "Al-Tawq", "Bled out" …
         public bool IgnoreArmor;
@@ -51,8 +52,36 @@ namespace Kryvon
 
         void Awake() => Current = maxHealth;
 
+        public event Action<Health, bool> OnArmorBroken;          // true = helmet, false = vest
+        /// a blast close by tears the helmet off (it is gone until you find another)
+        public void BlowOffHelmet() { if (helmetDurability > 0f || helmetReduction > 0f) ArmorBroke(true); }
+        /// destroyed armour: no more protection, pieces fly off, and the player is told
+        void ArmorBroke(bool helmet)
+        {
+            if (helmet) { helmetReduction = 0f; helmetDurability = 0f; } else { vestReduction = 0f; vestDurability = 0f; }
+            var at = transform.position + Vector3.up * (helmet ? 1.72f : 1.25f);
+            KryvonFX.ArmorShatter(at, helmet);
+            OnArmorBroken?.Invoke(this, helmet);
+            if (CompareTag("Player")) KryvonKillFeed.Notice(helmet ? "HELMET DESTROYED" : "VEST DESTROYED");
+        }
+
+        // badly hurt or knocked: blood drops on the ground where you walk or crawl (fade after a few seconds)
+        float nextDrip;
+        void Bleed()
+        {
+            if (!IsAlive || Time.time < nextDrip) return;
+            bool low = Current < maxHealth * 0.3f;
+            if (!IsKnocked && !low) return;
+            nextDrip = Time.time + (IsKnocked ? 0.7f : 1.4f);
+            var cam = Camera.main; if (cam && (cam.transform.position - transform.position).sqrMagnitude > 60f * 60f) return;
+            var from = transform.position + Vector3.up * 0.8f + new Vector3(UnityEngine.Random.Range(-0.25f, 0.25f), 0, UnityEngine.Random.Range(-0.25f, 0.25f));
+            foreach (var h in Physics.RaycastAll(from, Vector3.down, 3f, ~0, QueryTriggerInteraction.Ignore))
+                if (!h.collider.transform.IsChildOf(transform)) { KryvonFX.BloodDrop(h.point, h.normal); break; }
+        }
+
         void Update()
         {
+            Bleed();
             if (!IsKnocked) return;
             // bleeding out gets faster every time you are knocked again
             Current -= knockedBleedPerSecond * (1f + 0.5f * (KnockCount - 1)) * Time.deltaTime;
@@ -62,14 +91,18 @@ namespace Kryvon
         public void TakeDamage(DamageInfo info)
         {
             if (!IsAlive || info.Amount <= 0f) return;
+            // career stats for the lobby (the local player's hits on others)
+            if (info.Source && info.Source.CompareTag("Player") && !CompareTag("Player"))
+            { KryvonWallet.Count("damage", Mathf.RoundToInt(Mathf.Min(info.Amount, 200f))); if (info.Headshot) KryvonWallet.Count("headshots"); KryvonWallet.Count("hits"); }
 
             float dmg = info.Amount;
             if (!info.IgnoreArmor && !IsKnocked)
             {
-                if (info.Headshot && helmetDurability > 0f) { helmetDurability -= dmg; dmg *= 1f - helmetReduction; }
-                else if (!info.Headshot && vestDurability > 0f) { vestDurability -= dmg; dmg *= 1f - vestReduction; }
+                if (info.Headshot && helmetDurability > 0f) { helmetDurability -= dmg; dmg *= 1f - helmetReduction; if (helmetDurability <= 0f) ArmorBroke(true); }
+                else if (!info.Headshot && !info.Limb && vestDurability > 0f) { vestDurability -= dmg; dmg *= 1f - vestReduction; if (vestDurability <= 0f) ArmorBroke(false); }
             }
 
+            if (CompareTag("Player") && info.Cause != "Al-Tawq") dmg *= KryvonClass.DamageTakenMul;   // heavy class: armour
             Current -= dmg;
             info.Amount = dmg;
             LastDamage = info;

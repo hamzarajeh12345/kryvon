@@ -22,6 +22,8 @@ namespace Kryvon
 
         void OnGUI()
         {
+            if (KryvonTrailer.HideHud) return;
+            KryvonDebugHUD.DrawAim(weapons);
             if (hp == null) return;
             tex ??= Texture2D.whiteTexture;
             s14 ??= S(14); s18 ??= S(18); s26 ??= S(26, TextAnchor.MiddleCenter); s34 ??= S(34, TextAnchor.MiddleRight);
@@ -48,9 +50,11 @@ namespace Kryvon
             // ---- consumables 4..9 ----
             if (gear)
             {
-                for (int i = 0; i < 6; i++)
+                int shown = 0;
+                for (int i = 5; i >= 0; i--)
                 {
-                    var r = new Rect(W - 470 + i * 76, H - 92, 70, 70);
+                    if (gear.counts[i] <= 0 && gear.Using != (Consumable)i) continue;
+                    var r = new Rect(W - 96 - shown * 76, H - 92, 70, 70); shown++;
                     bool active = gear.Using == (Consumable)i;
                     Box(r, active ? new Color(1f, 0.62f, 0.15f, 0.5f) : Panel);
                     GUI.color = gear.counts[i] > 0 ? Color.white : new Color(1, 1, 1, 0.3f);
@@ -70,7 +74,12 @@ namespace Kryvon
             }
 
             // ---- weapon + ammo ----
-            if (weapons && weapons.Current)
+            if (weapons && weapons.IsMelee)
+            {
+                GUI.Label(new Rect(W - 470, H - 170, 450, 40), weapons.HeldName.ToUpper(), s34);
+                GUI.Label(new Rect(W - 470, H - 135, 450, 22), weapons.Current ? "MELEE   ·   CLICK TO SWING" : "NO WEAPON   ·   FIND ONE ON THE MAP", new GUIStyle(s14) { alignment = TextAnchor.MiddleRight });
+            }
+            else if (weapons && weapons.Current)
             {
                 var slot = weapons.CurrentSlot; var d = weapons.Current;
                 GUI.color = KryvonLoot.AmmoColor(d.ammoType);
@@ -83,8 +92,10 @@ namespace Kryvon
             if (thr)
             {
                 var tr = new Rect(W - 470, H - 210, 450, 30);
-                GUI.Label(tr, $"{KryvonThrowables.Names[(int)thr.Selected].ToUpper()} x{thr.Count(thr.Selected)}   ·   G throw  ·  T switch", new GUIStyle(s14) { alignment = TextAnchor.MiddleRight });
-                GUI.Label(new Rect(W - 470, H - 232, 450, 22), $"SPIKES x{thr.spikes} (Y)   SHIELD x{thr.shields} (U)", new GUIStyle(s14) { alignment = TextAnchor.MiddleRight, fontSize = 12 });
+                bool touch = KryvonTouchControls.Wanted;     // on phones the buttons show all of this – no keyboard hints over them
+                if (!touch && thr.Count(thr.Selected) > 0) GUI.Label(tr, $"[G]  {KryvonThrowables.Names[(int)thr.Selected].ToUpper()} ×{thr.Count(thr.Selected)}", new GUIStyle(s14) { alignment = TextAnchor.MiddleRight });
+                string dep = (thr.spikes > 0 ? $"[Y] SPIKES ×{thr.spikes}   " : "") + (thr.shields > 0 ? $"[U] SHIELD ×{thr.shields}" : "");
+                if (!touch && dep.Length > 0) GUI.Label(new Rect(W - 470, H - 232, 450, 22), dep, new GUIStyle(s14) { alignment = TextAnchor.MiddleRight, fontSize = 12 });
                 if (thr.Cook >= 0 && thr.Selected == Throwable.Frag)
                 {
                     float left = Mathf.Max(0, 5f - thr.Cook);
@@ -92,10 +103,10 @@ namespace Kryvon
                 }
             }
             // ---- stealth ----
-            if (st)
+            if (st && (st.HasGhillie || st.MudLeft > 0 || st.CloakLeft > 0 || st.Indoors || st.cloakCharges > 0 || st.RollProgress > 0 || st.Visibility < 0.9f))
             {
                 var vr = new Rect(cx + 240, H - 66, 150, 22);
-                GUI.Label(vr, $"👁 VISIBILITY {Mathf.RoundToInt(st.Visibility * 100)}%", s14);
+                GUI.Label(vr, $"SEEN {Mathf.RoundToInt(st.Visibility * 100)}%", s14);
                 Box(new Rect(vr.x, vr.yMax, 140, 4), new Color(1, 1, 1, 0.15f)); Box(new Rect(vr.x, vr.yMax, 140 * st.Visibility, 4), st.Visibility < 0.35f ? new Color(0.4f, 0.9f, 0.5f) : Color.white);
                 string tags = (st.HasGhillie ? "GHILLIE  " : "") + (st.MudLeft > 0 ? $"MUD {st.MudLeft:0}s  " : "") + (st.Indoors ? "IN SHADOW  " : "") + (st.CloakLeft > 0 ? $"CLOAK {st.CloakLeft:0.0}s" : st.cloakCharges > 0 ? (st.CloakCooldown > 0 ? $"CLOAK {st.CloakCooldown:0}s" : $"CLOAK x{st.cloakCharges} (X)") : "");
                 GUI.Label(new Rect(cx + 240, H - 40, 400, 20), tags, new GUIStyle(s14) { fontSize = 12 });
@@ -103,13 +114,13 @@ namespace Kryvon
             }
 
             // ---- zone + alive ----
-            if (zone)
+            if (zone && (zone.Landing || zone.Running))
             {
                 string t = Mathf.FloorToInt(zone.Timer / 60) + ":" + Mathf.FloorToInt(zone.Timer % 60).ToString("00");
-                string msg = zone.Landing ? (zone.CircleShown ? $"ZONE APPEARS — FIRST SHRINK IN {t}" : $"LANDING  {t}") : zone.Shrinking ? $"AL-TAWQ CLOSING  {t}" : $"NEXT SHRINK IN {t}";
+                string msg = zone.Landing ? (zone.CircleShown ? $"ZONE SHRINKS IN  {t}" : $"LANDING  {t}") : zone.Shrinking ? $"ZONE CLOSING  {t}" : $"ZONE SHRINKS IN  {t}";
                 var zr = new Rect(cx - 220, 14, 440, 34);
-                Box(zr, Panel); GUI.color = zone.Shrinking ? new Color(0.5f, 0.75f, 1f) : Color.white;
-                GUI.Label(zr, msg + $"   ·   PHASE {zone.PhaseIndex + 1}", s26); GUI.color = Color.white;
+                Box(zr, Panel); GUI.color = zone.Shrinking ? Color.Lerp(KryvonGraphics.ZoneColor, Color.white, 0.35f) : Color.white;
+                GUI.Label(zr, zone.Landing ? msg : msg + $"   ·   PHASE {zone.PhaseIndex + 1}", s26); GUI.color = Color.white;
             }
             int alive = 0; foreach (var h in FindObjectsByType<Health>()) if (h.IsAlive) alive++;
             Box(new Rect(W - 150, 14, 130, 54), Panel);

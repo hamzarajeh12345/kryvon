@@ -56,6 +56,19 @@ export class Audio {
   kill() { this.onUi(() => { this.tone(880, 0.1, 0.25, 'triangle'); this.tone(1320, 0.18, 0.25, 'triangle', 1, 0, 0.08); }); }
   hurt() { this.burst(0.35, 0.15, 600, 1); }
   slipper(dist, pan) { const a = this.att(dist); this.burst(a * 1.2, 0.07, 3000, 3, pan, 'bandpass'); }
+  footstep(surface, dist = 0, pan = 0) {
+    if (!this.ctx) return;
+    const a = this.att(dist);
+    const f = { gravel: 1800, rock: 1400, road: 900, grass: 700, mud: 420, sand: 520, water: 260 }[surface] || 900;
+    const dur = surface === 'water' ? 0.18 : 0.07;
+    this.burst(0.16 * a, dur, f, surface === 'sand' || surface === 'mud' ? 1.2 : 3, pan, 'bandpass');
+  }
+  armorBreak(part) {
+    this.onUi(() => {
+      this.burst(0.32, 0.12, part === 'head' ? 2400 : 1700, 2, 0, 'bandpass');
+      this.tone(part === 'head' ? 620 : 420, 0.12, 0.16, 'square', 0.7);
+    });
+  }
   ui(kind) { this.onUi(() => this._ui(kind)); }
   _ui(kind) {
     if (kind === 'pickup') this.tone(660, 0.07, 0.15, 'sine', 1.5);

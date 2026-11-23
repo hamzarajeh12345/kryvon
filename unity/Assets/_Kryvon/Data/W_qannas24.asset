@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_qannas24
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: qannas24
-  displayName: Al-Qannas 24
-  arabicName: Al-Qannas 24
+  displayName: M24
+  arabicName: M24
   weaponClass: 3
   ammoType: 1
+  model: w_sniper
+  modelLength: 1.15
   damage: 79
   headshotMultiplier: 2.5
   limbMultiplier: 0.9

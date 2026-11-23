@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_qannas98
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: qannas98
-  displayName: Al-Qannas 98
-  arabicName: Al-Qannas 98
+  displayName: Kar98k
+  arabicName: Kar98k
   weaponClass: 3
   ammoType: 1
+  model: w_sniper
+  modelLength: 1.1
   damage: 75
   headshotMultiplier: 2.5
   limbMultiplier: 0.9

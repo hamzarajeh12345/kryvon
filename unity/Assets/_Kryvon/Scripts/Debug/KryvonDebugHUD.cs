@@ -33,23 +33,113 @@ namespace Kryvon
             }
         }
 
+        static GUIStyle zoomStyle;
+        /// crosshair (hip fire), iron sight / red dot / scope (aiming); called by KryvonHUD
+        public static void DrawAim(WeaponController weapons, float hitMarkerUntil = 0f)
+        {
+            if (weapons == null || KryvonTrailer.HideHud) return;
+            float w = Screen.width, h = Screen.height;
+            if (!weapons.IsAds)
+            {
+                if (weapons.IsMelee) { Bar(w / 2 - 2, h / 2 - 2, 4, 4, new Color(1, 1, 1, 0.7f)); return; }
+                float gap = 6f + (weapons.CurrentSpread * 9f);
+                Color c = Time.time < hitMarkerUntil ? Color.red : Color.white;
+                Bar(w / 2 - 1, h / 2 - gap - 8, 2, 8, c); Bar(w / 2 - 1, h / 2 + gap, 2, 8, c);
+                Bar(w / 2 - gap - 8, h / 2 - 1, 8, 2, c); Bar(w / 2 + gap, h / 2 - 1, 8, 2, c);
+                return;
+            }
+            float zoom = Scopes.Zoom(weapons.CurrentScope);
+            if (zoom >= 2f) DrawScopeS(w, h, zoom);
+            else if (weapons.CurrentScope == ScopeType.None) DrawIronSightS(w, h);
+            else { GUI.color = new Color(1f, 0.15f, 0.1f, 0.95f); GUI.DrawTexture(new Rect(w / 2 - 4, h / 2 - 4, 8, 8), Dot()); GUI.color = Color.white; }
+        }
+        static void DrawIronSightS(float w, float h)
+        {
+            float cx = w / 2, cy = h / 2, u = h / 1080f; var steel = new Color(0.06f, 0.06f, 0.065f, 0.97f);
+            Bar(cx - 3 * u, cy, 6 * u, h * 0.16f, steel); Bar(cx - 26 * u, cy + h * 0.16f, 52 * u, 10 * u, steel);
+            Bar(cx - 210 * u, cy + 14 * u, 175 * u, 70 * u, steel); Bar(cx + 35 * u, cy + 14 * u, 175 * u, 70 * u, steel);
+            Bar(cx - 35 * u, cy + 60 * u, 70 * u, 24 * u, steel); Bar(0, h * 0.86f, w, h * 0.14f, new Color(0.04f, 0.04f, 0.045f, 0.9f));
+        }
+        static void DrawScopeS(float w, float h, float zoom)
+        {
+            float d = h * 1.02f, x0 = (w - d) / 2, y0 = (h - d) / 2;
+            Bar(0, 0, x0 + 1, h, Color.black); Bar(x0 + d - 1, 0, w - x0 - d + 1, h, Color.black);
+            GUI.DrawTexture(new Rect(x0, y0, d, d), Lens());
+            var ink = new Color(0.02f, 0.02f, 0.02f, 0.95f); float cx = w / 2, cy = h / 2, R = d * 0.46f, gap = d * 0.06f;
+            Bar(cx - R, cy - 2, R - gap * 2.2f, 4, ink); Bar(cx + gap * 2.2f, cy - 2, R - gap * 2.2f, 4, ink); Bar(cx - 2, cy + gap * 2.2f, 4, R - gap * 2.2f, ink);
+            Bar(cx - gap * 2.2f, cy - 0.5f, gap * 4.4f, 1, ink); Bar(cx - 0.5f, cy - gap * 2.2f, 1, gap * 4.4f, ink);
+            for (int i = 1; i <= 4; i++) { float o = gap * 0.5f * i; Bar(cx + o - 1.5f, cy - 1.5f, 3, 3, ink); Bar(cx - o - 1.5f, cy - 1.5f, 3, 3, ink); Bar(cx - 1.5f, cy + o - 1.5f, 3, 3, ink); }
+            if (zoom >= 6f) { GUI.color = new Color(1f, 0.15f, 0.1f, 0.9f); GUI.DrawTexture(new Rect(cx - 2, cy - 2, 4, 4), Dot()); GUI.color = Color.white; }
+            zoomStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, alignment = TextAnchor.MiddleCenter, normal = { textColor = new Color(1, 1, 1, 0.6f) } };
+            GUI.Label(new Rect(x0 + d * 0.5f - 60, y0 + d * 0.86f, 120, 24), $"{zoom:0}x", zoomStyle);
+        }
+
+        static Texture2D lens, dotTex;
+        static Texture2D Dot()
+        {
+            if (dotTex) return dotTex;
+            dotTex = new Texture2D(32, 32, TextureFormat.RGBA32, false);
+            for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) { float d = Vector2.Distance(new Vector2(x, y), new Vector2(15.5f, 15.5f)) / 15.5f; dotTex.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01((1f - d) * 3f))); }
+            dotTex.Apply(); return dotTex;
+        }
+        /// black surround with a round lens, soft edge and a dark ring, like looking down a scope tube
+        static Texture2D Lens()
+        {
+            if (lens) return lens;
+            const int N = 512; lens = new Texture2D(N, N, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int y = 0; y < N; y++) for (int x = 0; x < N; x++)
+            {
+                float r = Vector2.Distance(new Vector2(x, y), new Vector2(N / 2f, N / 2f)) / (N / 2f);
+                float a = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.9f, 0.97f, r));             // tube edge
+                a = Mathf.Max(a, Mathf.SmoothStep(0f, 0.55f, Mathf.InverseLerp(0.62f, 0.9f, r)));   // vignette inside the glass
+                lens.SetPixel(x, y, new Color(0, 0, 0, a));
+            }
+            lens.Apply(); return lens;
+        }
+        /// iron sights: the rear aperture and the front post, as seen down the barrel
+        void DrawIronSight(float w, float h)
+        {
+            float cx = w / 2, cy = h / 2, u = h / 1080f; var steel = new Color(0.06f, 0.06f, 0.065f, 0.97f);
+            Bar(cx - 3 * u, cy, 6 * u, h * 0.16f, steel);                                   // front post, its tip on the aim point
+            Bar(cx - 26 * u, cy + h * 0.16f, 52 * u, 10 * u, steel);                        // front sight base
+            Bar(cx - 210 * u, cy + 14 * u, 175 * u, 70 * u, steel); Bar(cx + 35 * u, cy + 14 * u, 175 * u, 70 * u, steel);   // rear sight wings
+            Bar(cx - 35 * u, cy + 60 * u, 70 * u, 24 * u, steel);
+            Bar(0, h * 0.86f, w, h * 0.14f, new Color(0.04f, 0.04f, 0.045f, 0.9f));            // receiver at the bottom of the view
+        }
+        void DrawScope(float w, float h, float zoom)
+        {
+            float d = h * 1.02f, x0 = (w - d) / 2, y0 = (h - d) / 2;
+            Bar(0, 0, x0 + 1, h, Color.black); Bar(x0 + d - 1, 0, w - x0 - d + 1, h, Color.black);
+            GUI.DrawTexture(new Rect(x0, y0, d, d), Lens());
+            // reticle: thick posts from the edge, a fine centre cross, mil dots
+            var ink = new Color(0.02f, 0.02f, 0.02f, 0.95f); float cx = w / 2, cy = h / 2, R = d * 0.46f, gap = d * 0.06f;
+            Bar(cx - R, cy - 2, R - gap * 2.2f, 4, ink); Bar(cx + gap * 2.2f, cy - 2, R - gap * 2.2f, 4, ink); Bar(cx - 2, cy + gap * 2.2f, 4, R - gap * 2.2f, ink);
+            Bar(cx - gap * 2.2f, cy - 0.5f, gap * 4.4f, 1, ink); Bar(cx - 0.5f, cy - gap * 2.2f, 1, gap * 4.4f, ink);
+            for (int i = 1; i <= 4; i++) { float o = gap * 0.5f * i; Bar(cx + o - 1.5f, cy - 1.5f, 3, 3, ink); Bar(cx - o - 1.5f, cy - 1.5f, 3, 3, ink); Bar(cx - 1.5f, cy + o - 1.5f, 3, 3, ink); }
+            if (zoom >= 6f) { GUI.color = new Color(1f, 0.15f, 0.1f, 0.9f); GUI.DrawTexture(new Rect(cx - 2, cy - 2, 4, 4), Dot()); GUI.color = Color.white; }
+            GUI.Label(new Rect(x0 + d * 0.5f - 60, y0 + d * 0.86f, 120, 24), $"{zoom:0}x", new GUIStyle(small) { alignment = TextAnchor.MiddleCenter, normal = { textColor = new Color(1, 1, 1, 0.6f) } });
+        }
+
         void OnGUI()
         {
+            if (KryvonTrailer.HideHud) return;
             big ??= new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold };
             small ??= new GUIStyle(GUI.skin.label) { fontSize = 14 };
             float w = Screen.width, h = Screen.height;
 
-            // crosshair (hidden while scoped in with a magnified sight)
-            if (weapons != null && !(weapons.IsAds && Scopes.Zoom(weapons.CurrentScope) >= 2f))
+            DrawAim(weapons, hitMarkerUntil);
+            if (false)
             {
                 float gap = 6f + (weapons.CurrentSpread * 9f);
                 Color c = Time.time < hitMarkerUntil ? Color.red : Color.white;
                 Bar(w / 2 - 1, h / 2 - gap - 8, 2, 8, c); Bar(w / 2 - 1, h / 2 + gap, 2, 8, c);
                 Bar(w / 2 - gap - 8, h / 2 - 1, 8, 2, c); Bar(w / 2 + gap, h / 2 - 1, 8, 2, c);
             }
-            else if (weapons != null)
-            {   // simple scope overlay
-                Bar(w / 2 - 0.5f, h * 0.2f, 1, h * 0.6f, Color.black); Bar(w * 0.3f, h / 2 - 0.5f, w * 0.4f, 1, Color.black);
+            else if (false) DrawScope(w, h, Scopes.Zoom(weapons.CurrentScope));
+            else if (false) DrawIronSight(w, h);
+            if (false)
+            {   // red dot / holographic
+                var dot = Dot(); GUI.color = new Color(1f, 0.15f, 0.1f, 0.95f); GUI.DrawTexture(new Rect(w / 2 - 4, h / 2 - 4, 8, 8), dot); GUI.color = Color.white;
             }
 
             // health

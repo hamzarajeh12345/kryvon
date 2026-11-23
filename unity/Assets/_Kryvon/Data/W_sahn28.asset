@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_sahn28
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: sahn28
-  displayName: Sahn-28
-  arabicName: Sahn-28
+  displayName: DP-28
+  arabicName: DP-28
   weaponClass: 5
   ammoType: 1
+  model: w_dp
+  modelLength: 1.2
   damage: 51
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

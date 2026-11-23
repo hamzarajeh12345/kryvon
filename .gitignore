@@ -35,3 +35,19 @@ unity/.vs/
 /unity/Loot*.png
 /unity/Cars.png
 /unity/Arsenal.png
+/unity/Builds/
+
+# stray Unity project folders at the repo root (Unity was once opened on the root folder)
+/Library/
+/Logs/
+/Packages/
+/ProjectSettings/
+/Temp/
+/UserSettings/
+# generated / too large for GitHub (rebuild with the KRYVON editor menus)
+/assets/downloads/
+/assets/downloads.meta
+/unity/Assets/_Kryvon/Baked/
+/unity/Assets/_Kryvon/Baked.meta
+/unity/Assets/_Kryvon/Scenes/Play.unity
+/unity/.utmp/

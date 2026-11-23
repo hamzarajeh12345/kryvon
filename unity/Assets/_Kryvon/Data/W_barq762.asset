@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_barq762
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: barq762
-  displayName: Barq-762
-  arabicName: Barq-762
+  displayName: AKM
+  arabicName: AKM
   weaponClass: 0
   ammoType: 1
+  model: w_ak
+  modelLength: 0.86
   damage: 46
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

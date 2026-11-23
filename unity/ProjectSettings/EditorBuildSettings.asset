@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/_Kryvon/Scenes/Boot.unity
+    guid: 7a0b4d2ee1f0a2c438131ee9497a7ebe
+  - enabled: 1
     path: Assets/_Kryvon/Scenes/Lobby.unity
     guid: 460c813fba5898f40b946c44b8d115a4
   - enabled: 1

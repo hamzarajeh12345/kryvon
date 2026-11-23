@@ -337,8 +337,9 @@ namespace Kryvon.EditorTools
             go.transform.localScale = Vector3.one * (size / Mathf.Max(0.01f, dim));
             b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
             go.transform.position = new Vector3(-b.center.x, -b.min.y, -b.center.z);
-            var pivot = new GameObject(Path.GetFileName(rel)); pivot.transform.SetParent(parent, false);
+            var pivot = new GameObject(Path.GetFileName(rel));          // at the world origin, so the offset is the local one
             go.transform.SetParent(pivot.transform, true);
+            pivot.transform.SetParent(parent, false);
             foreach (var r in rs) { r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On; r.receiveShadows = true; }
             return pivot;
         }

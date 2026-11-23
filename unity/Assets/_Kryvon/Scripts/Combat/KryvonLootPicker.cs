@@ -33,7 +33,13 @@ namespace Kryvon
             if (car) { car.Enter(gameObject); driving = car; car = null; }
             else if (door) door.Toggle(transform.position);
             else if (box) { openBox = box; Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
-            else if (loot && loot.Apply(gameObject)) { Play(); Destroy(loot.gameObject); }
+            else if (loot && loot.Apply(gameObject))
+            {
+                Play(); KryvonWallet.Add("loot");
+                if (loot.kind == LootKind.Weapon) KryvonLoot.Keep(loot);
+                if (KryvonLoot.Dropped) { KryvonLoot.DropWeapon(KryvonLoot.Dropped, transform.position + transform.forward * 0.9f + Vector3.up * 0.05f); KryvonLoot.Dropped = null; }
+                Destroy(loot.gameObject);
+            }
         }
 
         void Close() { openBox = null; Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }

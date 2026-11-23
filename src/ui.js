@@ -4,7 +4,7 @@ import { HALF, MAPS, ZONES, LANDMARKS, PRESETS } from './config.js';
 import { World, naturalHeight, deadSeaD } from './world.js';
 import { account, RANKS, RANKS_AR, rankOf } from './account.js';
 import { SCHEMA, TABS, ACTIONS, getPath, setPath, loadLocal, saveLocal, fromAccount, defaults, keyLabel } from './settings.js';
-import { MODES, SLOTS, COSMETICS, tierOf, itemById } from './progression.js';
+import { MODES, SLOTS, COSMETICS, tierOf, itemById, MASTER_PASS_SKINS, MASTER_PASS_LEVELS } from './progression.js';
 import { Actor } from './actor.js';
 import { LOOK, PRESET_LOOKS, presetLook, sanitizeLook } from './look.js';
 
@@ -256,6 +256,7 @@ export class UI {
           <div class="wallet"><span class="tierchip" style="--tc:${t.color}">${t.ar} ${t.roman}</span><span class="coin">🪙 ${u.coins ?? 0}</span></div>
           <div class="icons">
             ${account.offline ? '' : '<button id="lbBtn" title="المتصدرين">🏆</button>'}
+            <button id="passBtn" title="ماستر باس">🎖</button>
             <button id="setBtn" title="الإعدادات">⚙</button>
           </div>
         </header>
@@ -283,6 +284,7 @@ export class UI {
     $('startBtn').onclick = () => this.play();
     $('mapBtn').onclick = () => this.mapPicker();
     $('setBtn').onclick = () => this.openSettings();
+    $('passBtn').onclick = () => this.masterPass();
     $('acctBtn').onclick = () => this.accountPanel();
     $('wardBtn').onclick = () => this.wardrobe('chute');
     $('lookBtn').onclick = () => this.creator();
@@ -314,6 +316,27 @@ export class UI {
       if (k < 1) requestAnimationFrame(tick); else setTimeout(go, 250);
     };
     tick();
+  }
+
+  masterPass() {
+    const u = account.user;
+    const xp = Math.max(0, u.stats.xp || 0);
+    const level = Math.min(MASTER_PASS_LEVELS, 1 + Math.floor(xp / 500));
+    const progress = ((xp % 500) / 5);
+    const rewards = MASTER_PASS_SKINS.map((r, i) => `
+      <div class="pass-reward ${level >= r.level ? 'unlocked' : ''}">
+        <span class="pass-level">${String(r.level).padStart(2, '0')}</span>
+        <b>${r.ar}</b><small>${r.en}</small>
+        <i>${r.slot === 'dance' ? 'رقصات الدبكة والعرضة' : r.slot === 'gun' ? 'سكن سلاح مطوّر' : 'سكن مطوّر'}</i>
+      </div>`).join('');
+    this.modal(`
+      <h2>🎖 الماستر باس · KRYVON SEASON</h2>
+      <div class="pass-head"><span>المستوى <b>${level}</b> / ${MASTER_PASS_LEVELS}</span><div class="pass-bar"><i style="width:${progress}%"></i></div></div>
+      <div class="pass-ranks">${RANKS_AR.map((r, i) => `<span class="${rankOf(xp) >= i ? 'on' : ''}">${i + 1} · ${r}</span>`).join('')}</div>
+      <h3>معاينة المكافآت المطوّرة</h3>
+      <div class="pass-grid">${rewards}</div>
+      <p class="dim" style="font-size:12px">يتقدّم الماستر باس من XP المباريات، الفوز، الرتب، والمهمات الموسمية.</p>
+    `, 'wide');
   }
 
   // ---------------- wardrobe / shop ----------------

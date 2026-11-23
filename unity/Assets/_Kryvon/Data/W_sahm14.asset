@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_sahm14
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: sahm14
-  displayName: Sahm-14
-  arabicName: Sahm-14
+  displayName: Mini-14
+  arabicName: Mini-14
   weaponClass: 2
   ammoType: 0
+  model: w_dmr
+  modelLength: 0.98
   damage: 47
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

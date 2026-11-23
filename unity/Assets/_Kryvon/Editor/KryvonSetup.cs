@@ -61,11 +61,11 @@ namespace Kryvon.EditorTools
             // ---------- weapons ----------
             var rifle = WeaponAsset("AlSaqr", w =>
             {
-                w.weaponId = "saqr"; w.displayName = "Al-Saqr"; w.arabicName = "الصقر"; w.weaponClass = WeaponClass.AssaultRifle; w.ammoType = AmmoType.A556;
+                w.weaponId = "saqr"; w.displayName = "M4A1"; w.arabicName = "M4A1"; w.weaponClass = WeaponClass.AssaultRifle; w.ammoType = AmmoType.A556;
             });
             var sniper = WeaponAsset("AlQannas", w =>
             {
-                w.weaponId = "qannas"; w.displayName = "Al-Qannas"; w.arabicName = "القنّاص"; w.weaponClass = WeaponClass.Sniper; w.ammoType = AmmoType.A300;
+                w.weaponId = "qannas"; w.displayName = "L96A1"; w.arabicName = "L96A1"; w.weaponClass = WeaponClass.Sniper; w.ammoType = AmmoType.A300;
                 w.damage = 78; w.headshotMultiplier = 2.5f; w.roundsPerMinute = 48; w.magazineSize = 5; w.reloadSeconds = 3.2f; w.tacticalReloadSeconds = 2.8f;
                 w.fireModes = new[] { FireMode.Single }; w.range = 750; w.hipSpread = 3.5f; w.shoulderSpread = 2f; w.adsSpread = 0.02f; w.bloomPerShot = 0f;
                 w.recoilPattern = new[] { new Vector2(0f, 2.6f) }; w.recoilRecovery = 0.85f; w.defaultScope = ScopeType.X4; w.moveSpeedMultiplier = 0.95f;

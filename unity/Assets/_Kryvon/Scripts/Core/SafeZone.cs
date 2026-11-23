@@ -26,9 +26,10 @@ namespace Kryvon
         [Header("Phases")]
         [SerializeField] ZonePhase[] phases =
         {
-            new ZonePhase { waitSeconds = 75, shrinkSeconds = 45, radius = 560, damagePerSecond = 0.6f },
-            new ZonePhase { waitSeconds = 55, shrinkSeconds = 40, radius = 360, damagePerSecond = 1f },
-            new ZonePhase { waitSeconds = 45, shrinkSeconds = 35, radius = 220, damagePerSecond = 2f },
+            // first circle 500 m; waits a little longer than before because players move at realistic speeds now
+            new ZonePhase { waitSeconds = 95, shrinkSeconds = 60, radius = 500, damagePerSecond = 0.6f },
+            new ZonePhase { waitSeconds = 70, shrinkSeconds = 50, radius = 320, damagePerSecond = 1f },
+            new ZonePhase { waitSeconds = 55, shrinkSeconds = 42, radius = 200, damagePerSecond = 2f },
             new ZonePhase { waitSeconds = 40, shrinkSeconds = 30, radius = 130, damagePerSecond = 3.5f },
             new ZonePhase { waitSeconds = 35, shrinkSeconds = 25, radius = 75, damagePerSecond = 5f },
             new ZonePhase { waitSeconds = 30, shrinkSeconds = 20, radius = 40, damagePerSecond = 7.5f },
@@ -63,8 +64,17 @@ namespace Kryvon
 
         void Start()
         {
+            // tuning that must win over the values saved in the scene: the first circle is 500 m, and every wait / shrink is
+            // 20% longer because players now move at realistic speeds
+            if (phases.Length > 0)
+            {
+                phases[0].radius = 500f;
+                for (int i = 1; i < phases.Length; i++) phases[i].radius = Mathf.Min(phases[i].radius, phases[i - 1].radius * 0.68f);
+                foreach (var ph in phases) { ph.waitSeconds *= 1.2f; ph.shrinkSeconds *= 1.6f; }   // the edge moves at ≤ 1.9 m/s – slower than a run (2.6)
+            }
             Center = mapCenter; Radius = startRadius;
             UpdateVisual();
+            if (KryvonDrop.Active) return;          // the drop starts the zone when the player jumps
             if (MatchManager.Instance != null) MatchManager.Instance.OnPhaseChanged += p => { if (p == MatchPhase.InMatch) Begin(); };
             else Begin();
         }
@@ -144,6 +154,7 @@ namespace Kryvon
         void UpdateVisual()
         {
             if (wallVisual == null) return;
+            wallVisual.gameObject.SetActive(CircleShown);
             wallVisual.position = new Vector3(Center.x, mapCenter.y + wallHeight * 0.5f - 20f, Center.z);
             wallVisual.localScale = new Vector3(Radius * 2f, wallHeight * 0.5f, Radius * 2f);
         }

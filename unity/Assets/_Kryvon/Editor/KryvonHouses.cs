@@ -33,6 +33,14 @@ namespace Kryvon.EditorTools
         {
             public readonly Dictionary<Material, (List<Vector3> v, List<Vector3> n, List<Vector2> uv, List<int> t)> parts = new();
             public readonly List<(Vector3 c, Vector3 s)> colliders = new();
+            public readonly List<(Vector3 c, Vector3 s, Quaternion r)> ramps = new();   // invisible sloped colliders over stair flights
+            /// a walkable slope from 'from' to 'to' (both on the walking surface), width across x
+            public void Ramp(Vector3 from, Vector3 to, float width)
+            {
+                var d = to - from; float len = d.magnitude; const float t = 0.2f;
+                var rot = Quaternion.LookRotation(d / len, Vector3.up);
+                ramps.Add(((from + to) / 2 - rot * Vector3.up * (t / 2), new Vector3(width, t, len), rot));
+            }
             public readonly List<(Vector3 c, char axis, float w, float h)> doors = new(), windows = new();
             public void Box(Material m, Vector3 c, Vector3 s, bool collide = true)
             {
@@ -73,6 +81,11 @@ namespace Kryvon.EditorTools
                 }
                 var cols = new GameObject("Colliders"); cols.transform.SetParent(go.transform, false);
                 foreach (var (c, s) in colliders) { var bc = cols.AddComponent<BoxCollider>(); bc.center = c; bc.size = s; }
+                foreach (var (c, s, r) in ramps)
+                {
+                    var rg = new GameObject("StairRamp"); rg.transform.SetParent(cols.transform, false);
+                    rg.transform.localPosition = c; rg.transform.localRotation = r; rg.AddComponent<BoxCollider>().size = s;
+                }
                 Specials(this, go.transform);
                 return go;
             }
@@ -107,6 +120,7 @@ namespace Kryvon.EditorTools
         static readonly Color[] Tints = { new(1f, 0.97f, 0.9f), new(0.96f, 0.93f, 0.86f), new(1f, 0.95f, 0.85f), new(0.92f, 0.9f, 0.86f), new(0.98f, 0.92f, 0.8f) };
 
         /// builds one house in local space (origin = centre of the ground floor), returns loot spots in local space
+        public static readonly List<GameObject> StairMarks = new();   // parented to each house by the caller (used by the stair self-test)
         static List<Vector3> HouseShape(Builder b, float w, float d, int floors, float foundation)
         {
             var ext = PBRMat("M_HouseExt" + rng.Next(Exteriors.Length), Exteriors[rng.Next(Exteriors.Length)], Tints[rng.Next(Tints.Length)], 2.5f);
@@ -119,7 +133,7 @@ namespace Kryvon.EditorTools
             // foundation down to the terrain
             b.Box(concrete, new Vector3(0, -foundation / 2 - 0.05f, 0), new Vector3(w + 0.3f, foundation + 0.1f, d + 0.3f));
             // stairwell in the back-right corner
-            float swW = 1.3f, swD = 4.2f, swX = hx - Wall - swW / 2, swZ = hz - Wall - swD / 2;
+            float swW = 2.6f, swD = 4.6f, swX = hx - Wall - swW / 2, swZ = hz - Wall - swD / 2;
             float midX = (rng.NextDouble() < 0.5 ? -1 : 1) * w * 0.12f;     // interior wall positions
             float midZ = -d * 0.08f;
             for (int f = 0; f < floors; f++)
@@ -168,10 +182,27 @@ namespace Kryvon.EditorTools
                 WallLine(b, inner, 'z', midX, -hz + Wall, hz - Wall, y0, y1, new() { (midZ - d * 0.22f, 1.0f, 0f, 2.15f), (midZ + d * 0.25f, 1.0f, 0f, 2.15f) });
                 WallLine(b, inner, 'x', midZ, -hx + Wall, midX - Wall / 2, y0, y1, new() { ((-hx + midX) / 2, 1.0f, 0f, 2.15f) });
                 if (w > 11) WallLine(b, inner, 'x', midZ, midX + Wall / 2, swX - swW / 2 - 0.1f, y0, y1, new() { ((midX + swX - swW / 2) / 2, 1.0f, 0f, 2.15f) });
-                // stairs up to the next floor (and to the roof from the top floor)
-                int steps = 16; float rise = FloorH / steps, run = (swD - 0.4f) / steps;
-                for (int s = 0; s < steps; s++)
-                    b.Box(stairsM, new Vector3(swX, y0 + rise * (s + 1) / 2f, swZ - swD / 2 + 0.2f + run * (s + 0.5f)), new Vector3(swW - 0.05f, rise * (s + 1), run));   // solid steps
+                // switchback stairs (like a real block of flats): flight A goes up toward the back on the left lane to a
+                // half landing, flight B comes back to the front on the right lane and arrives at the next floor.
+                // Steps are slabs, not solid blocks, so there is head room under the flights of the floor above.
+                {
+                    const int n = 8; const float th = 0.22f, land = 1.2f;
+                    float laneW = swW / 2 - 0.06f, xa = swX - swW / 4, xb = swX + swW / 4;
+                    float zF = swZ - swD / 2 + 0.02f, zL = swZ + swD / 2 - land, run = (zL - zF) / n, rise = FloorH / 2 / n;
+                    for (int s = 0; s < n; s++)
+                    {
+                        float ta = y0 + rise * (s + 1), tb = y0 + FloorH / 2 + rise * (s + 1);
+                        b.Box(stairsM, new Vector3(xa, ta - th / 2, zF + run * (s + 0.5f)), new Vector3(laneW, th, run + 0.02f), false);   // flight A (visual)
+                        b.Box(stairsM, new Vector3(xb, tb - th / 2, zL - run * (s + 0.5f)), new Vector3(laneW, th, run + 0.02f), false);   // flight B (visual)
+                    }
+                    // what the feet actually walk on: smooth slopes over the steps (no edges to snag on)
+                    b.Ramp(new Vector3(xa, y0 + 0.02f, zF - 0.15f), new Vector3(xa, y0 + FloorH / 2, zL), laneW);
+                    b.Ramp(new Vector3(xb, y0 + FloorH / 2, zL), new Vector3(xb, y0 + FloorH + 0.02f, zF - 0.15f), laneW);
+                    b.Box(stairsM, new Vector3(swX, y0 + FloorH / 2 - th / 2, zL + land / 2), new Vector3(swW - 0.04f, th, land));    // half landing
+                    b.Box(inner, new Vector3(swX, y0 + FloorH / 2, (zF + 1.1f + zL) / 2), new Vector3(0.1f, FloorH, zL - zF - 1.1f)); // wall between the flights
+                    if (f > 0) b.Box(rail, new Vector3(swX - swW / 2 - 0.05f, y0 + 0.5f, (zF + 1.1f + swZ + swD / 2) / 2), new Vector3(0.06f, 1.0f, swZ + swD / 2 - zF - 1.1f));   // railing at the stair hole
+                    var mark = new GameObject("StairStart"); mark.transform.localPosition = new Vector3(xa, y0 + 0.05f, zF - 0.8f); StairMarks.Add(mark);
+                }
                 // loot: one or two spots per room
                 foreach (var (rx, rz) in new[] { ((-hx + midX) / 2, (-hz + midZ) / 2), ((-hx + midX) / 2, (midZ + hz) / 2), ((midX + hx) / 2 - 0.6f, (-hz + midZ) / 2), ((midX + swX - swW / 2) / 2, (midZ + hz) / 2) })
                 {
@@ -349,6 +380,7 @@ namespace Kryvon.EditorTools
                     var b = new Builder();
                     var spots = HouseShape(b, w, d, floors, hi - lo + 0.6f);
                     var go = b.Build("House", root, new Vector3(x, hi + 0.05f, z), yaw, ref meshId);
+                    foreach (var m in StairMarks) m.transform.SetParent(go.transform, false); StairMarks.Clear();
                     foreach (var s in spots) { DropLoot(lootRoot, go.transform.TransformPoint(s)); loot++; }
                     blocked.Add(new Rect(x - rad, z - rad, rad * 2, rad * 2));
                     houses++;

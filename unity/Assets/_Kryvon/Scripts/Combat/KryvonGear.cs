@@ -88,7 +88,7 @@ namespace Kryvon
                 if (interrupted) Cancel();
                 else
                 {
-                    useTime += Time.deltaTime; UseProgress = useTime / Seconds[(int)Using.Value];
+                    useTime += Time.deltaTime; UseProgress = useTime / (Seconds[(int)Using.Value] * KryvonClass.HealTimeMul);   // medic class: faster
                     if (UseProgress >= 1f) Finish(Using.Value);
                 }
             }

@@ -108,9 +108,47 @@ namespace Kryvon.EditorTools
             // canyon: back wall (behind the façade), side walls, and the Siq leading in
             CliffWall(root, "BackL", W(-26, 2), W(-13.5f, 2), 48, Nn(0, -1), cliff, 2.0f, 1);
             CliffWall(root, "BackR", W(13.5f, 2), W(26, 2), 48, Nn(0, -1), cliff, 2.0f, 2);
-            CliffWall(root, "BackTop", W(-13.5f, 3.5f), W(13.5f, 3.5f), 48, Nn(0, -1), cliff, 1.2f, 3);
-            CliffWall(root, "SideL", W(-26, -52), W(-26, 2), 44, Nn(1, 0), cliff, 2.6f, 4);
-            CliffWall(root, "SideR", W(26, 2), W(26, -52), 44, Nn(-1, 0), cliff, 2.6f, 5);
+            // behind Al-Khazneh: the rock is cut back into a hall (doorway → 13 x 13 m chamber), the cliff closes behind it
+            CliffWall(root, "BackTopL", W(-13.5f, 3.5f), W(-6.5f, 3.5f), 48, Nn(0, -1), cliff, 1.2f, 3);
+            CliffWall(root, "BackTopR", W(6.5f, 3.5f), W(13.5f, 3.5f), 48, Nn(0, -1), cliff, 1.2f, 8);
+            CliffWall(root, "HallBack", W(-6.5f, 16.5f), W(6.5f, 16.5f), 48, Nn(0, -1), cliff, 0.8f, 9);
+            CliffWall(root, "HallL", W(-6.5f, 3.5f), W(-6.5f, 16.5f), 48, Nn(1, 0), cliff, 0.8f, 30);
+            CliffWall(root, "HallR", W(6.5f, 16.5f), W(6.5f, 3.5f), 48, Nn(-1, 0), cliff, 0.8f, 31);
+            P(PrimitiveType.Cube, root, new Vector3(0, 9.5f, 10f), new Vector3(14, 1.2f, 14), carve);                 // hall ceiling
+            P(PrimitiveType.Cube, root, new Vector3(0, 0.05f, 10f), new Vector3(13, 0.1f, 13), sand);                 // hall floor
+            foreach (var sx in new[] { -3.2f, 3.2f }) Column(root, new Vector3(sx, 0, 10.5f), 9f, 0.5f, carve);         // two rock-cut pillars inside
+            P(PrimitiveType.Cube, root, new Vector3(0, 1.2f, 15.2f), new Vector3(6, 2.4f, 1.6f), carve);               // altar block (cover)
+            // side walls of the canyon with rock-cut tombs you can walk into (3.6 m doorways, 6 x 7 m chambers)
+            float[] caves = { -42f, -27f, -12f };
+            foreach (var sd in new[] { -1, 1 })
+            {
+                float x = 26f * sd, zPrev = -52f; int seg = 0;
+                foreach (var cz in caves)
+                {
+                    CliffWall(root, $"Side{sd}_{seg}", sd < 0 ? W(x, zPrev) : W(x, cz - 1.8f), sd < 0 ? W(x, cz - 1.8f) : W(x, zPrev), 44, Nn(-sd, 0), cliff, 2.6f, 40 + seg * 3 + (sd > 0 ? 1 : 0)); seg++;
+                    P(PrimitiveType.Cube, root, new Vector3(x + sd * 0.6f, 4.5f + 19.75f, cz), new Vector3(1.6f, 39.5f, 3.8f), cliff);     // rock over the doorway
+                    P(PrimitiveType.Cube, root, new Vector3(x + sd * 0.1f, 4.2f, cz), new Vector3(0.8f, 0.6f, 4.6f), carve, default, false);   // carved lintel
+                    foreach (var dz in new[] { -2.1f, 2.1f }) P(PrimitiveType.Cube, root, new Vector3(x + sd * 0.1f, 2.1f, cz + dz), new Vector3(0.7f, 4.2f, 0.5f), carve);   // door jambs
+                    float cx = x + sd * 4.2f;      // the chamber, cut into the rock behind the wall
+                    P(PrimitiveType.Cube, root, new Vector3(cx, 0.05f, cz), new Vector3(7, 0.1f, 6), sand);
+                    P(PrimitiveType.Cube, root, new Vector3(cx, 5.2f, cz), new Vector3(8, 1.2f, 7.4f), cliff);
+                    P(PrimitiveType.Cube, root, new Vector3(cx + sd * 3.9f, 2.6f, cz), new Vector3(1, 5.2f, 7.4f), cliff);
+                    foreach (var dz in new[] { -3.5f, 3.5f }) P(PrimitiveType.Cube, root, new Vector3(cx, 2.6f, cz + dz), new Vector3(8, 5.2f, 1), cliff);
+                    P(PrimitiveType.Cube, root, new Vector3(cx + sd * 2.6f, 0.5f, cz + 1.8f), new Vector3(1.6f, 1f, 2.2f), carve);       // a burial bench (cover)
+                    zPrev = cz + 1.8f;
+                }
+                CliffWall(root, $"Side{sd}_{seg}", sd < 0 ? W(x, zPrev) : W(x, 2), sd < 0 ? W(x, 2) : W(x, zPrev), 44, Nn(-sd, 0), cliff, 2.6f, 60 + (sd > 0 ? 1 : 0));
+            }
+            // plaza cover for close fights: fallen column drums, boulders, broken walls, and a rock ledge with a ramp (high ground)
+            var rnd = new System.Random(7);
+            float Rn(float a, float b) => a + (float)rnd.NextDouble() * (b - a);
+            for (int k = 0; k < 9; k++) P(PrimitiveType.Cylinder, root, new Vector3(Rn(-20, 20), 0.7f, Rn(-46, -8)), new Vector3(1.4f, Rn(0.8f, 1.6f), 1.4f), carve, new Vector3(90, Rn(0, 180), 0));
+            for (int k = 0; k < 7; k++) { float sc = Rn(1.8f, 3.4f); P(PrimitiveType.Sphere, root, new Vector3(Rn(-21, 21), sc * 0.3f, Rn(-48, -10)), new Vector3(sc * 1.3f, sc, sc * 1.1f), cliff, new Vector3(0, Rn(0, 180), Rn(-10, 10))); }
+            foreach (var (wx, wz, wy) in new[] { (-14f, -18f, 20f), (13f, -30f, -15f), (-8f, -38f, 70f), (6f, -14f, 95f) })
+                P(PrimitiveType.Cube, root, new Vector3(wx, 0.7f, wz), new Vector3(6.5f, 1.4f, 0.9f), carve, new Vector3(0, wy, 0));
+            P(PrimitiveType.Cube, root, new Vector3(23.6f, 5.6f, -20f), new Vector3(4.6f, 0.8f, 26f), carve);               // ledge along the east wall
+            P(PrimitiveType.Cube, root, new Vector3(23.6f, 6.6f, -20f + 0f), new Vector3(0.6f, 1.2f, 26f), carve).transform.localPosition = new Vector3(21.5f, 6.6f, -20f);   // parapet
+            P(PrimitiveType.Cube, root, new Vector3(23.6f, 2.8f, -38.6f), new Vector3(3.4f, 0.5f, 13f), carve, new Vector3(-25, 0, 0));   // ramp up to its south end
             CliffWall(root, "FrontL", W(-26, -52), W(-5, -52), 40, Nn(0, 1), cliff, 2.4f, 6);
             CliffWall(root, "FrontR", W(5, -52), W(26, -52), 40, Nn(0, 1), cliff, 2.4f, 7);
             // the Siq: a narrow winding gorge, 4–6 m wide, 60 m long
@@ -126,8 +164,11 @@ namespace Kryvon.EditorTools
             var f = new GameObject("AlKhazneh").transform; f.SetParent(root, false); f.localPosition = new Vector3(0, 0, 0.6f);
             P(PrimitiveType.Cube, f, new Vector3(0, 0.6f, 0.4f), new Vector3(27, 1.2f, 4.5f), carve);                        // podium
             for (int s = 0; s < 3; s++) P(PrimitiveType.Cube, f, new Vector3(0, 0.2f + s * 0.4f, -2.2f - s * 0.45f), new Vector3(14, 0.4f, 0.5f), carve); // steps
-            P(PrimitiveType.Cube, f, new Vector3(0, 9f, 2.6f), new Vector3(27, 18f, 1.2f), carve);                             // carved back plane, lower storey
-            P(PrimitiveType.Cube, f, new Vector3(0, 6.2f, 1.95f), new Vector3(3.4f, 8.4f, 0.2f), shade, default, false);       // dark doorway
+            // carved back plane, lower storey, with the doorway left OPEN into the hall
+            P(PrimitiveType.Cube, f, new Vector3(-8.35f, 9f, 2.6f), new Vector3(10.3f, 18f, 1.2f), carve);
+            P(PrimitiveType.Cube, f, new Vector3(8.35f, 9f, 2.6f), new Vector3(10.3f, 18f, 1.2f), carve);
+            P(PrimitiveType.Cube, f, new Vector3(0, 14.2f, 2.6f), new Vector3(6.4f, 7.6f, 1.2f), carve);
+            foreach (var dx in new[] { -2.4f, 2.4f }) P(PrimitiveType.Cube, f, new Vector3(dx, 5.2f, 2.6f), new Vector3(1.6f, 10.4f, 1.2f), carve);
             P(PrimitiveType.Cube, f, new Vector3(0, 10.7f, 1.9f), new Vector3(4.6f, 0.6f, 0.3f), carve, default, false);       // door lintel
             foreach (var x in new[] { -10.5f, -6.3f, -2.1f, 2.1f, 6.3f, 10.5f }) Column(f, new Vector3(x, 1.2f, -0.6f), 13f, 0.62f, carve);
             P(PrimitiveType.Cube, f, new Vector3(0, 14.7f, 0.3f), new Vector3(26.5f, 1.0f, 2.6f), carve);                    // architrave
@@ -153,6 +194,9 @@ namespace Kryvon.EditorTools
             // weathering: dark streaks down the cliff above the façade
             lootTier = 3; var pl = new GameObject("PetraLoot").transform; pl.SetParent(root, false);
             for (int k = 0; k < 22; k++) DropLoot(pl, root.TransformPoint(new Vector3(R(-20, 20), 0.12f, R(-48, -4))));
+            for (int k = 0; k < 6; k++) DropLoot(pl, root.TransformPoint(new Vector3(R(-5, 5), 0.15f, R(5, 15))));                    // the hall
+            foreach (var sd in new[] { -1, 1 }) foreach (var cz in caves) for (int k = 0; k < 2; k++) DropLoot(pl, root.TransformPoint(new Vector3(sd * R(28, 32), 0.15f, cz + R(-2, 2))));   // the tombs
+            for (int k = 0; k < 3; k++) DropLoot(pl, root.TransformPoint(new Vector3(23.6f, 6.1f, R(-30, -10))));                  // the ledge
             Debug.Log("KRYVON: Petra built");
         }
 

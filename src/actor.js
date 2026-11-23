@@ -73,6 +73,9 @@ export class Actor {
     this.fireCd = 0; this.kills = 0; this.damageDealt = 0;
     this.walk = 0; this.lastHitBy = null; this.place = 0;
     this.team = id; this.knocked = false; this.knockCount = 0; this.knockedBy = null;
+    this.stamina = 100; this.bleeding = 0; this.limp = false;
+    this.lastFootSurface = '';
+    this.footstepT = 0;
     this.buildMesh();
   }
 
@@ -262,9 +265,19 @@ export class Actor {
       if (a.lvl) {
         dmg = raw * (1 - ARMOR[slot].reduce[a.lvl]);
         a.dur -= raw;
-        if (a.dur <= 0) { this[slot] = { lvl: 0, dur: 0 }; this.refreshLook(); }
+        if (a.dur <= 0) {
+          const brokenLvl = a.lvl;
+          this[slot] = { lvl: 0, dur: 0 }; this.refreshLook();
+          if (this.game.onArmorBreak) this.game.onArmorBreak(this, slot, brokenLvl, attacker);
+        }
       }
     }
+    if (part === 'leg') {
+        this.limp = true;
+        this.bleeding = Math.min(8, this.bleeding + dmg * 0.025);
+    }
+    if (part === 'body' && dmg >= 18) this.bleeding = Math.min(6, this.bleeding + dmg * 0.012);
+    if (this.bleeding > 0 && this.game.onWound) this.game.onWound(this, part, attacker, cause);
     this.hp -= dmg;
     if (attacker && attacker !== this) { this.lastHitBy = attacker; attacker.damageDealt += dmg; }
     if (this.action && this.action.type === 'heal') this.action = null;
@@ -338,11 +351,22 @@ export class Actor {
     if (this.action && this.action.type === 'heal') m *= 0.45;
     if (this.swimming) m *= 0.45;
     if (this.knocked) m *= 0.22;
+    if (this.limp) m *= 0.72;
+    if (this.bleeding > 0) m *= 0.94;
     if (this.action && this.action.type === 'revive') m = 0;
     return m;
   }
 
   tickStatus(dt) {
+    const sprinting = this.sprinting && this.moving && this.state === 'ground';
+    if (sprinting) this.stamina = Math.max(0, this.stamina - dt * 15);
+    else this.stamina = Math.min(100, this.stamina + dt * (this.action ? 4 : 9));
+    if (this.stamina <= 0) this.sprinting = false;
+    if (this.bleeding > 0) {
+      this.hp = Math.max(1, this.hp - this.bleeding * dt * 0.12);
+      if (this.hp <= 1) this.bleeding = 0;
+    }
+    if (this.limp && this.stamina > 65 && this.hp > 45) this.limp = false;
     if (this.fireCd > 0) this.fireCd -= dt;
     if (this.knocked) {                      // bleeding out; faster after each knock
       if (!this.game.noDamage) this.hp -= (1.6 + this.knockCount * 0.9) * dt;
@@ -375,6 +399,7 @@ export class Actor {
     const w = this.game.world;
     const p = this.pos;
     if (this.state !== 'ground') return;
+    if (sprint && this.stamina <= 0) sprint = false;
     const speed = (sprint ? 8.6 : 5.6) * this.speedMul();
     const len = Math.hypot(dx, dz);
     if (len > 1) { dx /= len; dz /= len; }
@@ -406,7 +431,25 @@ export class Actor {
     const moved = Math.hypot(p.x - oldX, p.z - oldZ);
     this.walk += moved * 1.7;
     this.moving = moved > 0.01;
-    this.sprinting = sprint && this.moving;
+    this.sprinting = sprint && this.moving && this.stamina > 0;
+    if (this.moving) {
+      let surface = 'rock';
+      if (w.isWater(p.x, p.z)) surface = 'water';
+      else if (w.roadAt(p.x, p.z) > 0.35) surface = 'road';
+      else {
+        const h = w.getHeight(p.x, p.z);
+        if (h > 55) surface = 'rock';
+        else if (h < 4 && p.z > 300) surface = 'sand';
+        else if (p.z > 500 && p.x > 100) surface = 'sand';
+        else if (h < 8 && p.z < -200) surface = 'mud';
+        else surface = 'grass';
+      }
+      this.footstepT -= dt;
+      if (this.footstepT <= 0) {
+        this.footstepT = this.sprinting ? 0.28 : 0.42;
+        if (this.game.onFootstep) this.game.onFootstep(this, surface);
+      }
+    }
   }
 
   updateMesh(dt) {
@@ -482,7 +525,9 @@ export function rayActor(ox, oy, oz, dx, dy, dz, a, maxT) {
     if (d2 >= 0) {
       const t = (-B - Math.sqrt(d2)) / A;
       const y = oy + dy * t;
-      if (t > 0 && t < maxT && y > py + 0.05 && y < py + 1.52 && (!best || t < best.t)) best = { t, part: 'body' };
+      if (t > 0 && t < maxT && y > py + 0.05 && y < py + 1.52 && (!best || t < best.t)) {
+        best = { t, part: y < py + 0.72 ? 'leg' : 'body' };
+      }
     }
   }
   return best;

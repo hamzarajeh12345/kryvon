@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_asifav
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: asifav
-  displayName: Asifa-V
-  arabicName: Asifa-V
+  displayName: Vector
+  arabicName: Vector
   weaponClass: 1
   ammoType: 2
+  model: w_vector
+  modelLength: 0.62
   damage: 31
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

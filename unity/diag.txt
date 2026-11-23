@@ -1,0 +1,6 @@
+animators: 1
+ sara avatar=sara_Avatar human=True valid=True ctrl=HumanoidSoldier enabled=True armR=RightArm
+names: Death01, Dance_Loop, Crouch_Idle_Loop, Crouch_Fwd_Loop, A_TPose, Pistol_Aim_Up, Pistol_Aim_Neutral, Pistol_Aim_Down, PickUp_Table, Jump_Start, Jump_Loop, Jump_Land, Jog_Fwd_Loop, Sitting_Enter, Roll, Push_Loop, Punch_Jab, Punch_Cross, Pistol_Shoot, Pistol_Reload, Pistol_Idle_Loop, Sprint_Loop, Spell_Simple_Shoot, Spell_Simple_Idle_Loop, Spell_Simple_Exit, Spell_Simple_Enter, Sitting_Talking_Loop, Sitting_Idle_Loop, Sitting_Exit, Walk_Loop, Walk_Formal_Loop, Sword_Idle, Sword_Attack, Swim_Idle_Loop, Swim_Fwd_Loop, Interact, Idle_Torch_Loop, Idle_Talking_Loop, Idle_Loop, Hit_Head, Hit_Chest, Fixing_Kneeling, Driving_Loop
+clips: 43 aim human=True
+arm rot change deg: 177.7559
+after end: 0

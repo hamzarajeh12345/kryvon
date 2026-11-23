@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: W_asifa
   m_EditorClassIdentifier: Assembly-CSharp::Kryvon.WeaponData
   weaponId: asifa
-  displayName: Asifa
-  arabicName: Asifa
+  displayName: MP5
+  arabicName: MP5
   weaponClass: 1
   ammoType: 2
+  model: w_uzi
+  modelLength: 0.45
   damage: 34
   headshotMultiplier: 2.1
   limbMultiplier: 0.9

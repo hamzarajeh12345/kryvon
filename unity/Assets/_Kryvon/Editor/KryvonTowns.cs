@@ -9,7 +9,11 @@ namespace Kryvon.EditorTools
     public static partial class KryvonWorld
     {
         // town centres, also flattened in the terrain
-        public static readonly Vector2[] Towns = { new(-250, 200), new(230, -230), new(260, 210) };
+        public static Vector2[] Towns = { new(-250, 200), new(230, -230), new(260, 210) };
+        // per-town grid (cols, rows), loot tier of the core / the edge, chance a block is a tower; null = the old 6x5 towns
+        public static (int cols, int rows, int core, int edge, float towers)[] TownShapes;
+        static (int cols, int rows, int core, int edge, float towers) Shape(int i) => TownShapes != null && i < TownShapes.Length ? TownShapes[i] : (TownCols, TownRows, 3, 2, 0.18f);
+        public static Vector2 HalfOf(int cols, int rows) => new(cols * Cell / 2 + 8, rows * Cell / 2 + 8);
         const int TownCols = 6, TownRows = 5; const float Cell = 26f;
         public static Vector2 TownHalf => new(TownCols * Cell / 2 + 8, TownRows * Cell / 2 + 8);
 
@@ -150,15 +154,16 @@ namespace Kryvon.EditorTools
         }
 
         // ---------- vehicles: in every area two cars, a motorcycle and a buggy ----------
+        // top speeds in m/s (24 ≈ 86 km/h, 28 ≈ 100 km/h) and accelerations of real road cars (0–100 in 6–9 s)
         static readonly Dictionary<string, (string name, float len, float wid, float speed, float accel, float turn, Vector3 seat, bool lean)> VehicleStats = new()
         {
-            { "v_pickup", ("Shas Pickup", 5.0f, 2.0f, 30, 8.5f, 62, new Vector3(-0.42f, 0.75f, 0.35f), false) },
-            { "v_sedan", ("Sedan", 4.5f, 1.85f, 34, 10, 68, new Vector3(-0.4f, 0.5f, -0.1f), false) },
-            { "v_jeep", ("Jeep", 3.9f, 1.85f, 31, 11, 72, new Vector3(-0.42f, 0.6f, -0.2f), false) },
-            { "v_armored", ("Jawad Armored", 5.3f, 2.3f, 24, 6, 50, new Vector3(-0.5f, 0.95f, 0.3f), false) },
-            { "v_minibus", ("Service Minibus", 5.6f, 2.05f, 25, 6.5f, 52, new Vector3(-0.5f, 0.8f, 1.6f), false) },
-            { "v_moto", ("Tactical Dirt Bike", 2.1f, 0.8f, 38, 13, 95, new Vector3(0, 0.65f, -0.15f), true) },
-            { "v_buggy", ("Buggy", 3.4f, 1.9f, 33, 12, 82, new Vector3(-0.38f, 0.45f, -0.1f), false) },
+            { "v_pickup", ("Shas Pickup", 5.0f, 2.0f, 24, 4.6f, 62, new Vector3(-0.42f, 0.75f, 0.35f), false) },
+            { "v_sedan", ("Sedan", 4.5f, 1.85f, 27, 5.4f, 68, new Vector3(-0.4f, 0.5f, -0.1f), false) },
+            { "v_jeep", ("Jeep", 3.9f, 1.85f, 24, 5.2f, 72, new Vector3(-0.42f, 0.6f, -0.2f), false) },
+            { "v_armored", ("Jawad Armored", 5.3f, 2.3f, 19, 3.4f, 50, new Vector3(-0.5f, 0.95f, 0.3f), false) },
+            { "v_minibus", ("Service Minibus", 5.6f, 2.05f, 20, 3.6f, 52, new Vector3(-0.5f, 0.8f, 1.6f), false) },
+            { "v_moto", ("Tactical Dirt Bike", 2.1f, 0.8f, 28, 6.5f, 95, new Vector3(0, 0.65f, -0.15f), true) },
+            { "v_buggy", ("Buggy", 3.4f, 1.9f, 25, 6f, 82, new Vector3(-0.38f, 0.45f, -0.1f), false) },
         };
         public static GameObject MakeVehicle(string model, Vector3 pos, float yaw, Transform parent)
         {
@@ -268,35 +273,37 @@ namespace Kryvon.EditorTools
             var root = new GameObject("Towns").transform; root.SetParent(parent, false);
             var lootRoot = new GameObject("TownLoot").transform; lootRoot.SetParent(parent, false);
             int meshId = 10000, made = 0, towers = 0, loot = 0;
-            foreach (var t in Towns)
+            for (int ti = 0; ti < Towns.Length; ti++)
             {
+                var t = Towns[ti]; var (TC, TR, core, edge, towerP) = Shape(ti);
                 var town = new GameObject("Town").transform; town.SetParent(root, false);
                 float gy = Y(t.x, t.y);
                 var ground = new Builder();
                 void Strip(Transform _, Material m, Vector3 c, Vector3 sz) => ground.Box(m, c - new Vector3(t.x, gy, t.y), sz);
                 // street grid
-                for (int i = 0; i <= TownCols; i++) Strip(town, road, new Vector3(t.x - TownCols * Cell / 2 + i * Cell, gy + 0.02f, t.y), new Vector3(7, 0.04f, TownRows * Cell + 7));
-                for (int j = 0; j <= TownRows; j++) Strip(town, road, new Vector3(t.x, gy + 0.025f, t.y - TownRows * Cell / 2 + j * Cell), new Vector3(TownCols * Cell + 7, 0.04f, 7));
-                for (int i = 0; i < TownCols; i++) for (int j = 0; j < TownRows; j++)
+                for (int i = 0; i <= TC; i++) Strip(town, road, new Vector3(t.x - TC * Cell / 2 + i * Cell, gy + 0.02f, t.y), new Vector3(7, 0.04f, TR * Cell + 7));
+                for (int j = 0; j <= TR; j++) Strip(town, road, new Vector3(t.x, gy + 0.025f, t.y - TR * Cell / 2 + j * Cell), new Vector3(TC * Cell + 7, 0.04f, 7));
+                for (int i = 0; i < TC; i++) for (int j = 0; j < TR; j++)
                 {
-                    float cx = t.x - TownCols * Cell / 2 + (i + 0.5f) * Cell, cz = t.y - TownRows * Cell / 2 + (j + 0.5f) * Cell;
+                    float cx = t.x - TC * Cell / 2 + (i + 0.5f) * Cell, cz = t.y - TR * Cell / 2 + (j + 0.5f) * Cell;
                     Strip(town, pave, new Vector3(cx, gy + 0.08f, cz), new Vector3(Cell - 7, 0.16f, Cell - 7));
                     double roll = rng.NextDouble();
-                    int floors = roll < 0.28 ? 2 : roll < 0.56 ? 3 : roll < 0.82 ? 4 : 6 + rng.Next(4);
+                    int floors = roll < (1 - towerP) * 0.34 ? 2 : roll < (1 - towerP) * 0.68 ? 3 : roll < 1 - towerP ? 4 : 6 + rng.Next(4);
                     bool tower = floors >= 6;
                     float w = tower ? R(15f, 17f) : R(10.5f, 14.5f), d = tower ? R(13f, 15f) : R(9.5f, 13f);
-                    float yaw = (j < TownRows / 2 ? 180f : 0f) + (rng.NextDouble() < 0.2 ? 90f : 0f);   // face a street
+                    float yaw = (j < TR / 2 ? 180f : 0f) + (rng.NextDouble() < 0.2 ? 90f : 0f);   // face a street
                     float hi = gy + 0.16f;
                     for (int a = -1; a <= 1; a++) for (int c = -1; c <= 1; c++) hi = Mathf.Max(hi, Y(cx + a * w / 2, cz + c * d / 2));
                     var b = new Builder();
                     var spots = HouseShape(b, w, d, floors, 1.2f);
                     var go = b.Build(tower ? "Tower" : "House", town, new Vector3(cx, hi + 0.05f, cz), yaw, ref meshId);
-                    lootTier = (i > 0 && i < TownCols - 1 && j > 0 && j < TownRows - 1) ? 3 : 2;   // downtown core is hot
+                    foreach (var m in StairMarks) m.transform.SetParent(go.transform, false); StairMarks.Clear();
+                    lootTier = (i > 0 && i < TC - 1 && j > 0 && j < TR - 1) ? core : edge;   // downtown core is hot
                     foreach (var s in spots) if (rng.NextDouble() < (tower ? 0.55 : 0.9)) { DropLoot(lootRoot, go.transform.TransformPoint(s)); loot++; }
                     made++; if (tower) towers++;
                 }
                 ground.Build("Streets", town, new Vector3(t.x, gy, t.y), 0, ref meshId);
-                blocked.Add(new Rect(t.x - TownHalf.x, t.y - TownHalf.y, TownHalf.x * 2, TownHalf.y * 2));
+                var th = HalfOf(TC, TR); blocked.Add(new Rect(t.x - th.x, t.y - th.y, th.x * 2, th.y * 2));
             }
             Debug.Log($"KRYVON: towns built – {made} buildings ({towers} towers), {loot} loot items");
         }
